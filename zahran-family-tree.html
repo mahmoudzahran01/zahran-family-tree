@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شجرة عائلة زهران</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  background: #f0f4f8;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+#toolbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #1a237e, #283593);
+  color: #fff;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  flex-wrap: wrap;
+}
+#toolbar h1 {
+  font-size: 20px;
+  white-space: nowrap;
+}
+#search-box {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  width: 260px;
+  direction: rtl;
+  outline: none;
+}
+#search-box:focus { box-shadow: 0 0 0 3px rgba(255,255,255,0.4); }
+.toolbar-btn {
+  padding: 8px 16px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 20px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.toolbar-btn:hover { background: rgba(255,255,255,0.15); }
+#legend {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  font-size: 13px;
+  margin-right: auto;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+#stats {
+  font-size: 12px;
+  opacity: 0.8;
+}
+#search-results {
+  position: fixed;
+  top: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 101;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  max-height: 300px;
+  overflow-y: auto;
+  display: none;
+  min-width: 280px;
+  direction: rtl;
+}
+.search-result-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+.search-result-item:hover { background: #e3f2fd; }
+.search-result-item small { color: #666; display: block; font-size: 11px; margin-top: 2px; }
+svg { width: 100vw; height: calc(100vh - 50px); margin-top: 50px; }
+.node rect {
+  stroke-width: 1.5px;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.node rect:hover { filter: brightness(0.92); }
+.node text {
+  font-size: 13px;
+  pointer-events: none;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+.node .spouse-text {
+  font-size: 10.5px;
+  fill: #555;
+}
+.link {
+  fill: none;
+  stroke: #90a4ae;
+  stroke-width: 1.5px;
+}
+.node-highlight rect {
+  stroke: #ff6f00 !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 6px rgba(255,111,0,0.5));
+}
+.node .collapse-indicator {
+  font-size: 11px;
+  fill: #fff;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <h1>شجرة عائلة زهران</h1>
+  <input id="search-box" type="text" placeholder="ابحث عن اسم...">
+  <button class="toolbar-btn" onclick="expandAll()">توسيع الكل</button>
+  <button class="toolbar-btn" onclick="collapseAll()">طي الكل</button>
+  <button class="toolbar-btn" onclick="resetView()">عرض كامل</button>
+  <div id="legend">
+    <div class="legend-item"><div class="legend-color" style="background:#4a90d9;"></div><span>ذكر</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#e091b5;"></div><span>انثى</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#aaa;"></div><span>طي/توسيع بالنقر</span></div>
+  </div>
+  <div id="stats"></div>
+</div>
+<div id="search-results"></div>
+<svg id="tree-svg"></svg>
+
+<script>
+// ============================================================
+// FAMILY TREE DATA - ~600 nodes
+// gender: "m" = male, "f" = female
+// spouse: string name of spouse(s), shown beside the node
+// _children used internally for collapse state
+// ============================================================
+const treeData = {
+  name: "يوسف زهران", gender: "m", children: []
+};
+
+/* OLD DATA - preserved for reference
+const _DISABLED_treeData = {
+  name: "يوسف زهران", gender: "m", children: [
+    { name: "محمد", gender: "m", children: [
+        // ===== حامد =====
+        { name: "حامد", gender: "m", children: [
+          { name: "سالم", gender: "m", spouse: "امونة جوخدار", children: [
+            { name: "عبدالله", gender: "m", spouse: "مريم دخيل", children: [
+              { name: "محمد", gender: "m", spouse: "فاطمة شربيني", children: [
+                { name: "ماجد", gender: "m", spouse: "العنود المالكي", children: [
+                  { name: "يوسف", gender: "m" }
+                ]},
+                { name: "باسل", gender: "m", spouse: "سلافه يوسف" },
+                { name: "فيصل", gender: "m" },
+                { name: "عبدالله", gender: "m" }
+              ]},
+              { name: "هديل", gender: "f", spouse: "ناجي حماد" },
+              { name: "هيفاء", gender: "f", spouse: "طلال كركشان" },
+              { name: "لمياء", gender: "f", spouse: "عبدالله مسعودي" },
+              { name: "جوهره", gender: "f", spouse: "عبدالقادر الصبان" },
+              { name: "ايمان", gender: "f", spouse: "قمصاني" },
+              { name: "مريم", gender: "f", spouse: "عبدالكريم المنازي" },
+              { name: "حسن", gender: "m" },
+              { name: "فاطمة", gender: "f" },
+              { name: "سالم", gender: "m" }
+            ]}
+          ]},
+          { name: "محمد", gender: "m", children: [
+            { name: "حامد", gender: "m", children: [
+              { name: "سراج", gender: "m", spouse: "جواهر جوخدار", children: [
+                { name: "عفاف", gender: "f", spouse: "احمد السليمان" },
+                { name: "فيصل", gender: "m" },
+                { name: "آمنة", gender: "f" }
+              ]},
+              { name: "يوسف", gender: "m", spouse: "لورا هولند", children: [
+                { name: "فهد", gender: "m" },
+                { name: "فرح", gender: "f" },
+                { name: "كاميرون", gender: "m" }
+              ]},
+              { name: "اسامه", gender: "m", spouse: "رنده المالكي", children: [
+                { name: "فيصل", gender: "m" },
+                { name: "باسل", gender: "m" },
+                { name: "كرمه", gender: "f" },
+                { name: "مشعل", gender: "m", spouse: "تامي جرجس" }
+              ]},
+              { name: "مي", gender: "f" },
+              { name: "جيهان", gender: "f" }
+            ]},
+            { name: "آمنه", gender: "f" }
+          ]},
+          { name: "عثمان", gender: "m", children: [
+            { name: "احمد", gender: "m" }
+          ]},
+          { name: "سراج", gender: "m" }
+        ]},
+        // ===== Branch 4: صالح =====
+        { name: "صالح", gender: "m", children: [
+          { name: "محمد", gender: "m", children: [
+            { name: "صالح", gender: "m", spouse: "وداد سرتي", children: [
+              { name: "عبدالرحمن", gender: "m" },
+              { name: "عبدالله", gender: "m" },
+              { name: "خالد", gender: "m", spouse: "امل العمودي", children: [
+                { name: "سارة", gender: "f" },
+                { name: "هايدي", gender: "f" },
+                { name: "ماريا", gender: "f" },
+                { name: "خالد", gender: "m" }
+              ]},
+              { name: "سراج", gender: "m", spouse: "هيام سرتي", children: [
+                { name: "إسراء", gender: "f" },
+                { name: "نداء", gender: "f" },
+                { name: "البراء", gender: "m", spouse: "اروى ابو لبن", children: [
+                  { name: "اسماء", gender: "f" },
+                  { name: "صهيب", gender: "m" },
+                  { name: "صالح", gender: "m", spouse: "نوره الشريف", children: [
+                    { name: "مروان", gender: "m" }
+                  ]},
+                  { name: "باسم", gender: "m" },
+                  { name: "رغد", gender: "f" }
+                ]},
+                { name: "بسمة", gender: "f" }
+              ]},
+              { name: "لولوه", gender: "f", spouse: "سلطان الحمدان", children: [
+                { name: "لمى", gender: "f" },
+                { name: "هيا", gender: "f" },
+                { name: "سعود", gender: "m" },
+                { name: "آلاء", gender: "f" }
+              ]}
+            ]}
+          ]},
+          { name: "احمد", gender: "m", children: [
+            { name: "بندر", gender: "m" },
+            { name: "اسامة", gender: "m" },
+            { name: "خالد", gender: "m" },
+            { name: "هتان", gender: "m" },
+            { name: "عبدالعزيز", gender: "m" }
+          ]},
+          { name: "سليمان", gender: "m", spouse: "جميلة بنتن", children: [
+            { name: "احمد", gender: "m", spouse: "زهيه رضا / زكية زهران", children: [
+              { name: "داليا", gender: "f" },
+              { name: "مها", gender: "f" },
+              { name: "خلود", gender: "f" },
+              { name: "هنادي", gender: "f" },
+              { name: "خالد", gender: "m" },
+              { name: "اسامة", gender: "m" },
+              { name: "بندر", gender: "m" }
+            ]},
+            { name: "إعتماد", gender: "f", spouse: "عبدالجليل ابوالحمايل", children: [
+              { name: "سليمان ابوالحمايل", gender: "m" },
+              { name: "سلطان ابوالحمايل", gender: "m" },
+              { name: "رأفت ابوالحمايل", gender: "m" },
+              { name: "بلقيس ابوالحمايل", gender: "f" },
+              { name: "عبدالرحمن ابوالحمايل", gender: "m" },
+              { name: "احمد ابوالحمايل", gender: "m" },
+              { name: "محمد ابوالحمايل", gender: "m" },
+              { name: "حنين ابوالحمايل", gender: "f" },
+              { name: "بسمة ابوالحمايل", gender: "f" },
+              { name: "اريج ابوالحمايل", gender: "f" },
+              { name: "منال ابوالحمايل", gender: "f" }
+            ]},
+            { name: "إعتدال", gender: "f", spouse: "صالح باسودان", children: [
+              { name: "فريدة باسودان", gender: "f" },
+              { name: "خلود باسودان", gender: "f" },
+              { name: "محمد باسودان", gender: "m" },
+              { name: "بسمة باسودان", gender: "f" },
+              { name: "عبدالله باسودان", gender: "m", children: [
+                { name: "تالية", gender: "f" },
+                { name: "اصيل", gender: "m" }
+              ]},
+              { name: "ابراهيم باسودان", gender: "m", spouse: "وجدان باسودان" }
+            ]},
+            { name: "نور", gender: "m", spouse: "فاطمة صبان" },
+            { name: "منى", gender: "f", spouse: "جمال عبده", children: [
+              { name: "عنود", gender: "f" },
+              { name: "نوف", gender: "f" }
+            ]},
+            { name: "عناية", gender: "f", spouse: "فتحي راجخان", children: [
+              { name: "عبدالله راجخان", gender: "m" },
+              { name: "فهد راجخان", gender: "m" },
+              { name: "هبه راجخان", gender: "f" },
+              { name: "سارة راجخان", gender: "f" },
+              { name: "هديل راجخان", gender: "f" }
+            ]},
+            { name: "اماني", gender: "f", spouse: "خالد باوزير", children: [
+              { name: "رغد باوزير", gender: "f" },
+              { name: "عبدالرحمن باوزير", gender: "m" },
+              { name: "نورة باوزير", gender: "f" },
+              { name: "زهرة باوزير", gender: "f" },
+              { name: "ماجد باوزير", gender: "m" },
+              { name: "وسام باوزير", gender: "m" },
+              { name: "وليد باوزير", gender: "m" }
+            ]},
+            { name: "امل", gender: "f", spouse: "طارق بافضل", children: [
+              { name: "عبدالله بافضل", gender: "m" },
+              { name: "احمد بافضل", gender: "m" },
+              { name: "مها بافضل", gender: "f" },
+              { name: "ليلى بافضل", gender: "f" }
+            ]},
+            { name: "عبدالعزيز الثمالي", gender: "m", spouse: "جميلة بنتن", children: [
+              { name: "سارة الثمالي", gender: "f" },
+              { name: "عبدالمجيد الثمالي", gender: "m" },
+              { name: "محمد الثمالي", gender: "m" },
+              { name: "فيصل الثمالي", gender: "m" }
+            ]}
+          ]},
+          { name: "عبدالمجيد", gender: "m", children: [
+            { name: "عبدالله", gender: "m", children: [
+              { name: "سليمان", gender: "m" },
+              { name: "ناصر", gender: "m" },
+              { name: "عبدالعزيز", gender: "m" }
+            ]}
+          ]}
+        ]},
+        // ===== Branch 5: مصطفى =====
+        { name: "مصطفى", gender: "m", spouse: "زكيه رجب / ليلى كيال", children: [
+          { name: "فاروق", gender: "m", spouse: "ياسمين بن لادن", children: [
+            { name: "عمار", gender: "m" },
+            { name: "ماجد", gender: "m" },
+            { name: "سلطان", gender: "m" },
+            { name: "فاروق", gender: "m" },
+            { name: "ايمان", gender: "f" },
+            { name: "يوسف", gender: "m", spouse: "مايا ادريس" }
+          ]},
+          { name: "مصطفى", gender: "m", spouse: "سمر نصير", children: [
+            { name: "فيصل", gender: "m" },
+            { name: "بدر", gender: "m" },
+            { name: "عمرو", gender: "m" },
+            { name: "جود", gender: "f", spouse: "ابراهيم حلواني" }
+          ]},
+          { name: "فؤاد", gender: "m", spouse: "فريال كيال" },
+          { name: "فهد", gender: "m" },
+          { name: "عبدالوهاب", gender: "m", spouse: "هدى بكر", children: [
+            { name: "هاني", gender: "m", children: [
+              { name: "هوازن", gender: "f" },
+              { name: "هتون", gender: "f" }
+            ]},
+            { name: "فيصل", gender: "m", children: [
+              { name: "فيصل", gender: "m" }
+            ]},
+            { name: "احمد", gender: "m", spouse: "رولا الطويل", children: [
+              { name: "خالد", gender: "m" }
+            ]},
+            { name: "خالد", gender: "m" }
+          ]},
+          { name: "محمد", gender: "m", children: [
+            { name: "احمد", gender: "m", children: [
+              { name: "حمزه", gender: "m" }
+            ]},
+            { name: "طارق", gender: "m", spouse: "مريم منشي" },
+            { name: "نفيسة", gender: "f", spouse: "حسين باناجه" }
+          ]},
+          { name: "عبدالرحمن", gender: "m", children: [
+            { name: "ريان", gender: "m" },
+            { name: "وليد", gender: "m" }
+          ]},
+          { name: "هالة", gender: "f", spouse: "وليد بن محفوظ" },
+          { name: "اريج", gender: "f" },
+          { name: "رنين", gender: "f", spouse: "خالد كيال" },
+          { name: "رانيه", gender: "f", spouse: "عمرو كيال" },
+          { name: "رفيف", gender: "f" },
+          { name: "مايا", gender: "f" },
+          { name: "روان", gender: "f", spouse: "بدر فايز" },
+          { name: "غيداء", gender: "f" },
+          { name: "هدى", gender: "f" },
+          { name: "نسرين", gender: "f", spouse: "بغدادي مصطفى" },
+          { name: "منال", gender: "f", spouse: "قاسم موصلي" },
+          { name: "مرام", gender: "f" },
+          { name: "نورا", gender: "f" },
+          { name: "ساره", gender: "f", spouse: "المرزوقي" },
+          { name: "ليلى", gender: "f" },
+          { name: "نفيسة", gender: "f" }
+        ]},
+        // ===== Branch 6: اسعد =====
+        { name: "اسعد", gender: "m", children: [
+          { name: "محمد", gender: "m" },
+          { name: "احمد", gender: "m" },
+          { name: "علي", gender: "m", children: [
+            { name: "فؤاد", gender: "m" }
+          ]},
+          { name: "طلال", gender: "m" },
+          { name: "ماجد", gender: "m" }
+        ]},
+      ]}
+    ]},
+    // =============================================
+    // SON 2: عبدالله (upper-right branches)
+    // =============================================
+    { name: "عبدالله", gender: "m", children: [
+      { name: "محمد", gender: "m", children: [
+        { name: "يوسف", gender: "m", children: [
+          { name: "يوسف", gender: "m" },
+          { name: "حسن", gender: "m" }
+        ]}
+      ]},
+      { name: "عبدالله", gender: "m", children: [
+        { name: "محبي", gender: "m", children: [
+          { name: "يوسف", gender: "m", children: [
+            { name: "رامي", gender: "m" },
+            { name: "عبدالله", gender: "m" }
+          ]},
+          { name: "عمار", gender: "m" },
+          { name: "علاء", gender: "m", children: [
+            { name: "عبدالرحمن", gender: "m" },
+            { name: "عمر", gender: "m" }
+          ]},
+          { name: "محبي", gender: "m" },
+          { name: "عادل", gender: "m", children: [
+            { name: "سلطان", gender: "m" },
+            { name: "عدنان", gender: "m" }
+          ]},
+          { name: "محمد", gender: "m" },
+          { name: "عبدالله", gender: "m", children: [
+            { name: "هيثم", gender: "m", children: [
+              { name: "محمد", gender: "m" },
+              { name: "عبدالله", gender: "m" }
+            ]}
+          ]}
+        ]}
+      ]},
+      { name: "عبدالرحمن", gender: "m", children: [
+        { name: "سامي", gender: "m" },
+        { name: "هاني", gender: "m", children: [
+          { name: "فيصل", gender: "m" }
+        ]},
+        { name: "عبدالوهاب", gender: "m", children: [
+          { name: "احمد", gender: "m" },
+          { name: "خالد", gender: "m" }
+        ]}
+      ]}
+    ]},
+    // =============================================
+    // SON 3: احمد (lower/bottom branches)
+    // =============================================
+    { name: "احمد", gender: "m", children: [
+      { name: "عبدالرحمن", gender: "m", children: [
+        { name: "ابراهيم", gender: "m" },
+        { name: "عادل", gender: "m" }
+      ]},
+      { name: "سامي", gender: "m", children: [
+        { name: "فوزان", gender: "m", children: [
+          { name: "فارس", gender: "m" },
+          { name: "ريان", gender: "m" },
+          { name: "راند", gender: "f" }
+        ]}
+      ]},
+      { name: "عمر", gender: "m", children: [
+        { name: "عمر", gender: "m" },
+        { name: "علي", gender: "m" }
+      ]},
+      { name: "عبدالله", gender: "m", children: [
+        { name: "عمر", gender: "m", children: [
+          { name: "عمر", gender: "m" },
+          { name: "علي", gender: "m" },
+          { name: "هتان", gender: "m" }
+        ]}
+      ]},
+      { name: "صالح", gender: "m", children: [
+        { name: "شادي", gender: "m" }
+      ]},
+      { name: "عصمت", gender: "m", children: [
+        { name: "راكان", gender: "m" },
+        { name: "فادي", gender: "m" }
+      ]},
+      { name: "علي", gender: "m", children: [
+        { name: "محمود", gender: "m", children: [
+          { name: "عبدالمجيد", gender: "m", children: [
+            { name: "عماد", gender: "m", children: [
+              { name: "محمد", gender: "m" }
+            ]},
+            { name: "عصام", gender: "m", children: [
+              { name: "تركي", gender: "m" }
+            ]}
+          ]},
+          { name: "عاطف", gender: "m" },
+          { name: "حبيب", gender: "m", children: [
+            { name: "ريان", gender: "m" },
+            { name: "عبدالرحمن", gender: "m" }
+          ]},
+          { name: "هاني", gender: "m", children: [
+            { name: "محمود", gender: "m" },
+            { name: "براء", gender: "m" }
+          ]},
+          { name: "محمد", gender: "m", children: [
+            { name: "عبدالرؤوف", gender: "m" },
+            { name: "محمود", gender: "m" },
+            { name: "احمد", gender: "m" },
+            { name: "اياد", gender: "m" }
+          ]},
+          { name: "علي", gender: "m", children: [
+            { name: "محمد", gender: "m" },
+            { name: "محمد", gender: "m" },
+            { name: "مهند", gender: "m" }
+          ]},
+          { name: "وائل", gender: "m", children: [
+            { name: "محمود", gender: "m" },
+            { name: "فيصل", gender: "m" },
+            { name: "اصيل", gender: "m" },
+            { name: "يوسف", gender: "m" }
+          ]},
+          { name: "نواف", gender: "m", children: [
+            { name: "بدر", gender: "m" },
+            { name: "عبدالله", gender: "m" },
+            { name: "نايف", gender: "m" }
+          ]},
+          { name: "ايمن", gender: "m", children: [
+            { name: "عبدالرحمن", gender: "m" },
+            { name: "محمد", gender: "m" }
+          ]}
+        ]}
+      ]}
+    ]}
+  ]
+};
+END OF OLD DATA */
+
+// ============================================================
+// D3.js TREE VISUALIZATION
+// ============================================================
+
+const MALE_COLOR = "#4a90d9";
+const MALE_STROKE = "#2c6fad";
+const FEMALE_COLOR = "#e091b5";
+const FEMALE_STROKE = "#c06090";
+const COLLAPSED_COLOR = "#78909c";
+const NODE_HEIGHT = 28;
+const NODE_RX = 6;
+const SPOUSE_GAP = 4;
+
+const margin = { top: 60, right: 80, bottom: 20, left: 40 };
+const svg = d3.select("#tree-svg");
+const g = svg.append("g");
+
+// Zoom behavior
+const zoom = d3.zoom()
+  .scaleExtent([0.05, 3])
+  .on("zoom", (event) => {
+    g.attr("transform", event.transform);
+  });
+svg.call(zoom);
+
+// Tree layout
+const treemap = d3.tree().nodeSize([36, 220]);
+
+let root;
+let i = 0;
+let allNodes = [];
+
+function init() {
+  root = d3.hierarchy(treeData);
+  root.x0 = 0;
+  root.y0 = 0;
+
+  // Count total nodes
+  let count = 0;
+  root.each(() => count++);
+  document.getElementById("stats").textContent = `عدد الاشخاص: ${count}`;
+
+  // Start fully expanded
+
+  update(root);
+  resetView();
+}
+
+function collapse(d) {
+  if (d.children) {
+    d._children = d.children;
+    d._children.forEach(collapse);
+    d.children = null;
+  }
+}
+
+function expand(d) {
+  if (d._children) {
+    d.children = d._children;
+    d._children = null;
+    d.children.forEach(expand);
+  }
+}
+
+function getTextWidth(text, fontSize) {
+  // Approximate: Arabic chars ~10px at 13px font, Latin ~7px
+  const avgWidth = fontSize * 0.65;
+  return text.length * avgWidth;
+}
+
+function getNodeWidth(d) {
+  const nameWidth = getTextWidth(d.data.name, 13);
+  let w = Math.max(nameWidth + 20, 60);
+  if (d.data.spouse) {
+    const spouseWidth = getTextWidth(d.data.spouse, 10.5);
+    w = Math.max(w, spouseWidth + 20);
+  }
+  return w;
+}
+
+function update(source) {
+  const treeDataLayout = treemap(root);
+  const nodes = treeDataLayout.descendants();
+  const links = treeDataLayout.links();
+
+  allNodes = nodes;
+
+  // Flip Y for RTL (root on right)
+  const maxDepth = d3.max(nodes, d => d.depth) || 1;
+  nodes.forEach(d => {
+    d.y = (maxDepth - d.depth) * 240;
+  });
+
+  // ---- NODES ----
+  const node = g.selectAll("g.node")
+    .data(nodes, d => d.id || (d.id = ++i));
+
+  const nodeEnter = node.enter().append("g")
+    .attr("class", "node")
+    .attr("transform", d => `translate(${source.y0 || 0},${source.x0 || 0})`)
+    .on("click", (event, d) => {
+      if (d.children) {
+        d._children = d.children;
+        d.children = null;
+      } else if (d._children) {
+        d.children = d._children;
+        d._children = null;
+      }
+      update(d);
+    });
+
+  // Main rect
+  nodeEnter.append("rect")
+    .attr("class", "main-rect")
+    .attr("height", NODE_HEIGHT)
+    .attr("rx", NODE_RX)
+    .attr("ry", NODE_RX);
+
+  // Name text
+  nodeEnter.append("text")
+    .attr("class", "name-text")
+    .attr("dy", "1.15em")
+    .attr("text-anchor", "middle")
+    .style("fill", "#fff")
+    .style("font-weight", "500");
+
+  // Spouse text (below node)
+  nodeEnter.append("text")
+    .attr("class", "spouse-text")
+    .attr("dy", "0")
+    .attr("text-anchor", "middle")
+    .style("fill", "#555");
+
+  // Collapse indicator circle
+  nodeEnter.append("circle")
+    .attr("class", "collapse-dot")
+    .attr("r", 8)
+    .attr("fill", "#546e7a")
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5);
+
+  nodeEnter.append("text")
+    .attr("class", "collapse-indicator")
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em");
+
+  // Merge
+  const nodeUpdate = nodeEnter.merge(node);
+
+  nodeUpdate.transition().duration(400)
+    .attr("transform", d => `translate(${d.y},${d.x})`);
+
+  // Update rect
+  nodeUpdate.select("rect.main-rect")
+    .attr("width", d => getNodeWidth(d))
+    .attr("x", d => -getNodeWidth(d) / 2)
+    .attr("fill", d => {
+      if (d._children) return COLLAPSED_COLOR;
+      return d.data.gender === "f" ? FEMALE_COLOR : MALE_COLOR;
+    })
+    .attr("stroke", d => {
+      if (d._children) return "#455a64";
+      return d.data.gender === "f" ? FEMALE_STROKE : MALE_STROKE;
+    });
+
+  // Update name text
+  nodeUpdate.select("text.name-text")
+    .text(d => d.data.name)
+    .attr("x", 0)
+    .attr("y", 2);
+
+  // Update spouse text
+  nodeUpdate.select("text.spouse-text")
+    .text(d => d.data.spouse ? `⚭ ${d.data.spouse}` : "")
+    .attr("x", 0)
+    .attr("y", NODE_HEIGHT + 12);
+
+  // Collapse indicator
+  nodeUpdate.select("circle.collapse-dot")
+    .attr("cx", d => -getNodeWidth(d) / 2 - 12)
+    .attr("cy", NODE_HEIGHT / 2)
+    .attr("display", d => (d._children || (d.children && d.children.length > 0)) ? "block" : "none")
+    .attr("fill", d => d._children ? "#e65100" : "#43a047");
+
+  nodeUpdate.select("text.collapse-indicator")
+    .attr("x", d => -getNodeWidth(d) / 2 - 12)
+    .attr("y", NODE_HEIGHT / 2)
+    .text(d => {
+      if (d._children) return "+" + d._children.length;
+      if (d.children && d.children.length > 0) return d.children.length;
+      return "";
+    })
+    .attr("display", d => (d._children || (d.children && d.children.length > 0)) ? "block" : "none")
+    .style("font-size", "9px")
+    .style("fill", "#fff");
+
+  // Remove exiting nodes
+  const nodeExit = node.exit().transition().duration(300)
+    .attr("transform", d => `translate(${source.y},${source.x})`)
+    .remove();
+  nodeExit.select("rect").attr("width", 0);
+  nodeExit.select("text").style("fill-opacity", 0);
+
+  // ---- LINKS ----
+  const link = g.selectAll("path.link")
+    .data(links, d => d.target.id);
+
+  const linkEnter = link.enter().insert("path", "g")
+    .attr("class", "link")
+    .attr("d", () => {
+      const o = { x: source.x0 || 0, y: source.y0 || 0 };
+      return diagonal(o, o);
+    });
+
+  const linkUpdate = linkEnter.merge(link);
+
+  linkUpdate.transition().duration(400)
+    .attr("d", d => diagonal(d.source, d.target));
+
+  link.exit().transition().duration(300)
+    .attr("d", () => {
+      const o = { x: source.x, y: source.y };
+      return diagonal(o, o);
+    })
+    .remove();
+
+  // Store old positions
+  nodes.forEach(d => {
+    d.x0 = d.x;
+    d.y0 = d.y;
+  });
+}
+
+function diagonal(s, d) {
+  // Horizontal S-curve (RTL: parent on right, child on left)
+  const midY = (s.y + d.y) / 2;
+  return `M ${s.y} ${s.x}
+          C ${midY} ${s.x},
+            ${midY} ${d.x},
+            ${d.y} ${d.x}`;
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+const searchBox = document.getElementById("search-box");
+const searchResults = document.getElementById("search-results");
+
+searchBox.addEventListener("input", function() {
+  const query = this.value.trim();
+  if (!query) {
+    searchResults.style.display = "none";
+    clearHighlights();
+    return;
+  }
+
+  // Search all nodes in the full tree
+  const results = [];
+  function searchTree(node, path) {
+    const fullPath = path ? path + " ← " + node.data.name : node.data.name;
+    if (node.data.name.includes(query) || (node.data.spouse && node.data.spouse.includes(query))) {
+      results.push({ node, path: fullPath, name: node.data.name, spouse: node.data.spouse });
+    }
+    const kids = node.children || node._children;
+    if (kids) kids.forEach(c => searchTree(c, fullPath));
+  }
+  searchTree(root, "");
+
+  searchResults.innerHTML = "";
+  if (results.length === 0) {
+    searchResults.innerHTML = '<div class="search-result-item">لا توجد نتائج</div>';
+  } else {
+    results.slice(0, 20).forEach(r => {
+      const div = document.createElement("div");
+      div.className = "search-result-item";
+      div.innerHTML = `<strong>${r.name}</strong>${r.spouse ? ` (⚭ ${r.spouse})` : ""}<small>${r.path}</small>`;
+      div.addEventListener("click", () => {
+        expandToNode(r.node);
+        highlightNode(r.node);
+        searchResults.style.display = "none";
+      });
+      searchResults.appendChild(div);
+    });
+  }
+  searchResults.style.display = "block";
+});
+
+searchBox.addEventListener("blur", () => {
+  setTimeout(() => { searchResults.style.display = "none"; }, 200);
+});
+
+function expandToNode(targetNode) {
+  // Get ancestors
+  const ancestors = targetNode.ancestors().reverse();
+  ancestors.forEach(a => {
+    if (a._children) {
+      a.children = a._children;
+      a._children = null;
+    }
+  });
+  update(root);
+
+  // Center on node
+  setTimeout(() => {
+    const svgEl = document.getElementById("tree-svg");
+    const w = svgEl.clientWidth;
+    const h = svgEl.clientHeight;
+    const scale = 1;
+    const tx = w / 2 - targetNode.y * scale;
+    const ty = h / 2 - targetNode.x * scale;
+    svg.transition().duration(600)
+      .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  }, 500);
+}
+
+function highlightNode(targetNode) {
+  clearHighlights();
+  g.selectAll("g.node")
+    .filter(d => d === targetNode)
+    .classed("node-highlight", true);
+
+  setTimeout(clearHighlights, 4000);
+}
+
+function clearHighlights() {
+  g.selectAll("g.node").classed("node-highlight", false);
+}
+
+// ============================================================
+// TOOLBAR ACTIONS
+// ============================================================
+function expandAll() {
+  root.each(d => {
+    if (d._children) {
+      d.children = d._children;
+      d._children = null;
+    }
+  });
+  update(root);
+  setTimeout(resetView, 500);
+}
+
+function collapseAll() {
+  if (root.children) {
+    root.children.forEach(c => collapse(c));
+  }
+  update(root);
+  setTimeout(resetView, 500);
+}
+
+function resetView() {
+  const svgEl = document.getElementById("tree-svg");
+  const w = svgEl.clientWidth;
+  const h = svgEl.clientHeight;
+
+  // Get bounds of visible nodes
+  const bounds = g.node().getBBox();
+  if (bounds.width === 0 || bounds.height === 0) return;
+
+  const fullWidth = Math.max(bounds.width + 100, 200);
+  const fullHeight = Math.max(bounds.height + 100, 200);
+  const scaleX = w / fullWidth;
+  const scaleY = (h - 60) / fullHeight;
+  const scale = Math.min(scaleX, scaleY, 1.2) * 0.9;
+
+  const tx = w / 2 - (bounds.x + bounds.width / 2) * scale;
+  const ty = (h + 60) / 2 - (bounds.y + bounds.height / 2) * scale;
+
+  svg.transition().duration(700)
+    .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+}
+
+// Initialize
+init();
+</script>
+</body>
+</html>
