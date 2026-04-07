@@ -216,10 +216,10 @@ const yousefNode = TREE_DATA.children[0]; // يوسف زهران
 const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
 
 // Layout parameters
-const TRUNK_LENGTH = 200;
-const BASE_BRANCH_LENGTH = 260;
+const TRUNK_LENGTH = 250;
+const BASE_BRANCH_LENGTH = 350;
 const BRANCH_LENGTH_DECAY = 0.88;
-const MIN_BRANCH_LENGTH = 70;
+const MIN_BRANCH_LENGTH = 100;
 
 // We'll place يوسف at (0, 0) and the tree grows upward (negative Y).
 // محمد will be below يوسف (positive Y = below in screen, which is root area).
@@ -542,11 +542,11 @@ function drawLeaf(x, y, scale, rotation) {
 function drawLeaves(node) {
   if (node._isLeaf) {
     // Draw 3-6 leaves at this position for a lush look
-    const numLeaves = 3 + Math.floor(rng() * 4);
+    const numLeaves = 3 + Math.floor(rng() * 3);
     for (let i = 0; i < numLeaves; i++) {
-      const ox = (rng() - 0.5) * 18;
-      const oy = (rng() - 0.5) * 18 - 6;
-      const s = 0.6 + rng() * 0.7;
+      const ox = (rng() - 0.5) * 35;
+      const oy = (rng() - 0.5) * 35 - 10;
+      const s = 0.8 + rng() * 0.8;
       const rot = rng() * 360;
       drawLeaf(node._x + ox, node._y + oy, s, rot);
     }
@@ -618,20 +618,18 @@ addRootLabel();
 
 // Font size by depth
 function fontSize(depth) {
-  const sizes = [24, 20, 17, 14, 12, 11, 10, 9, 8.5, 8, 7.5];
+  const sizes = [32, 26, 22, 18, 16, 14, 13, 12, 11, 10.5, 10];
   return sizes[Math.min(depth, sizes.length - 1)];
 }
 
 function textColor(depth, isLeaf) {
-  if (depth <= 1) return '#FFF8E1';
-  if (depth <= 3) return '#EFEBE9';
-  if (isLeaf) return '#33691E';
-  return '#3E2723';
+  if (depth <= 1) return '#FFFFFF';
+  return '#1B0F00';
 }
 
 function textStroke(depth) {
-  if (depth <= 3) return '#3E2723';
-  return 'none';
+  if (depth <= 1) return '#3E2723';
+  return '#FFFFFF';
 }
 
 // Draw names along branches or at leaf positions
@@ -681,7 +679,7 @@ function drawNames(node) {
         'font-family': 'Amiri, serif',
         transform: `translate(${midX},${midY}) rotate(${angle})`,
         stroke: textStroke(node._depth),
-        'stroke-width': '0.3',
+        'stroke-width': node._depth <= 1 ? '0.5' : '3',
         'paint-order': 'stroke'
       });
       txt.textContent = name;
@@ -702,10 +700,10 @@ function drawNames(node) {
       cursor: 'pointer'
     });
 
-    // Add background for readability on deeper nodes
-    if (node._depth >= 4) {
-      txt.setAttribute('stroke', '#FDF8F0');
-      txt.setAttribute('stroke-width', '2.5');
+    // Add white background stroke for readability on ALL non-trunk nodes
+    if (node._depth >= 2) {
+      txt.setAttribute('stroke', '#FFFFFF');
+      txt.setAttribute('stroke-width', '3.5');
       txt.setAttribute('paint-order', 'stroke');
     }
 
