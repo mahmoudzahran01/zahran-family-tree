@@ -216,10 +216,10 @@ const yousefNode = TREE_DATA.children[0]; // يوسف زهران
 const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
 
 // Layout parameters
-const TRUNK_LENGTH = 140;
-const BASE_BRANCH_LENGTH = 130;
-const BRANCH_LENGTH_DECAY = 0.84;
-const MIN_BRANCH_LENGTH = 35;
+const TRUNK_LENGTH = 200;
+const BASE_BRANCH_LENGTH = 260;
+const BRANCH_LENGTH_DECAY = 0.88;
+const MIN_BRANCH_LENGTH = 70;
 
 // We'll place يوسف at (0, 0) and the tree grows upward (negative Y).
 // محمد will be below يوسف (positive Y = below in screen, which is root area).
@@ -265,8 +265,8 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
 }
 
 // Place يوسف at origin, tree grows upward
-const startAngle = -85 * Math.PI / 180;
-const endAngle = 85 * Math.PI / 180;
+const startAngle = -88 * Math.PI / 180;
+const endAngle = 88 * Math.PI / 180;
 layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
 
 // Place محمد below يوسف (roots)
@@ -618,7 +618,7 @@ addRootLabel();
 
 // Font size by depth
 function fontSize(depth) {
-  const sizes = [18, 15, 13, 11, 10, 9, 8, 7.5, 7, 6.5, 6];
+  const sizes = [24, 20, 17, 14, 12, 11, 10, 9, 8.5, 8, 7.5];
   return sizes[Math.min(depth, sizes.length - 1)];
 }
 
