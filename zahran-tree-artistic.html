@@ -216,10 +216,11 @@ const yousefNode = TREE_DATA.children[0]; // يوسف زهران
 const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
 
 // Layout parameters
-const TRUNK_LENGTH = 250;
-const BASE_BRANCH_LENGTH = 350;
-const BRANCH_LENGTH_DECAY = 0.88;
-const MIN_BRANCH_LENGTH = 100;
+const TRUNK_LENGTH = 180;
+const BASE_BRANCH_LENGTH = 180;
+const BRANCH_LENGTH_DECAY = 0.82;
+const MIN_BRANCH_LENGTH = 60;
+const MIN_TIP_SPACING = 30; // minimum pixels between leaf tips
 
 // We'll place يوسف at (0, 0) and the tree grows upward (negative Y).
 // محمد will be below يوسف (positive Y = below in screen, which is root area).
@@ -230,7 +231,33 @@ const MIN_BRANCH_LENGTH = 100;
 const totalLeaves = countDescendants(yousefNode);
 const rng = seededRandom(42);
 
-// Position computation using angular allocation
+// Compute the total radius (cumulative branch length) to each leaf
+function maxRadius(depth) {
+  let r = 0, len = BASE_BRANCH_LENGTH;
+  for (let d = 0; d < depth; d++) {
+    r += len;
+    len = Math.max(len * BRANCH_LENGTH_DECAY, MIN_BRANCH_LENGTH);
+  }
+  return r;
+}
+
+// Compute max depth
+function maxDepth(node) {
+  if (!node.children || node.children.length === 0) return 0;
+  return 1 + Math.max(...node.children.map(maxDepth));
+}
+const treeMaxDepth = maxDepth(yousefNode);
+const outerRadius = maxRadius(treeMaxDepth);
+
+// Compute minimum angle needed per leaf so tips are MIN_TIP_SPACING apart
+const minAnglePerLeaf = MIN_TIP_SPACING / outerRadius;
+
+// Compute needed total angle
+const totalLeafCount = countDescendants(yousefNode);
+const neededAngle = totalLeafCount * minAnglePerLeaf;
+const availableAngle = Math.max(neededAngle, 170 * Math.PI / 180);
+
+// Position computation using angular allocation with guaranteed spacing
 function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
   node._x = cx;
   node._y = cy;
@@ -241,21 +268,23 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
   const nextLen = Math.max(branchLen * BRANCH_LENGTH_DECAY, MIN_BRANCH_LENGTH);
   const totalWeight = node.children.reduce((s, ch) => s + ch._leafCount, 0);
 
+  // Ensure minimum angle per leaf descendant
+  const parentSpan = angleEnd - angleStart;
+
   let currentAngle = angleStart;
   for (const child of node.children) {
     const share = child._leafCount / totalWeight;
+    const childSpan = share * parentSpan;
     const childAngleStart = currentAngle;
-    const childAngleEnd = currentAngle + share * (angleEnd - angleStart);
+    const childAngleEnd = currentAngle + childSpan;
     const midAngle = (childAngleStart + childAngleEnd) / 2;
 
-    // Add slight randomness to angle and length
-    const angleJitter = (rng() - 0.5) * 3 * (Math.PI / 180);
-    const lenJitter = 1 + (rng() - 0.5) * 0.15;
+    const angleJitter = (rng() - 0.5) * 2 * (Math.PI / 180);
+    const lenJitter = 1 + (rng() - 0.5) * 0.12;
 
     const effectiveAngle = midAngle + angleJitter;
     const effectiveLen = branchLen * lenJitter;
 
-    // Convert angle to coordinates (angle 0 = up, positive = right)
     const nx = cx + Math.sin(effectiveAngle) * effectiveLen;
     const ny = cy - Math.cos(effectiveAngle) * effectiveLen;
 
@@ -265,8 +294,9 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
 }
 
 // Place يوسف at origin, tree grows upward
-const startAngle = -88 * Math.PI / 180;
-const endAngle = 88 * Math.PI / 180;
+const halfAngle = availableAngle / 2;
+const startAngle = -halfAngle;
+const endAngle = halfAngle;
 layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
 
 // Place محمد below يوسف (roots)
@@ -542,11 +572,11 @@ function drawLeaf(x, y, scale, rotation) {
 function drawLeaves(node) {
   if (node._isLeaf) {
     // Draw 3-6 leaves at this position for a lush look
-    const numLeaves = 3 + Math.floor(rng() * 3);
+    const numLeaves = 2 + Math.floor(rng() * 2);
     for (let i = 0; i < numLeaves; i++) {
-      const ox = (rng() - 0.5) * 35;
-      const oy = (rng() - 0.5) * 35 - 10;
-      const s = 0.8 + rng() * 0.8;
+      const ox = (rng() - 0.5) * 20;
+      const oy = (rng() - 0.5) * 20 - 8;
+      const s = 0.7 + rng() * 0.5;
       const rot = rng() * 360;
       drawLeaf(node._x + ox, node._y + oy, s, rot);
     }
