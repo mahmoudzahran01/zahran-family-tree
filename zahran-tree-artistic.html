@@ -255,7 +255,7 @@ const minAnglePerLeaf = MIN_TIP_SPACING / outerRadius;
 // Compute needed total angle
 const totalLeafCount = countDescendants(yousefNode);
 const neededAngle = totalLeafCount * minAnglePerLeaf;
-const availableAngle = Math.max(neededAngle, 2 * Math.PI); // full 360 degrees
+const availableAngle = Math.min(Math.max(neededAngle, 270 * Math.PI / 180), 300 * Math.PI / 180); // max 300 degrees, never wraps past root
 
 // Minimum angular gap (radians) between siblings at each depth
 // Bigger gap at shallow depths prevents center messiness
