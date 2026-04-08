@@ -257,6 +257,20 @@ const totalLeafCount = countDescendants(yousefNode);
 const neededAngle = totalLeafCount * minAnglePerLeaf;
 const availableAngle = Math.max(neededAngle, 2 * Math.PI); // full 360 degrees
 
+// Minimum angular gap (radians) between siblings at each depth
+// Bigger gap at shallow depths prevents center messiness
+const MIN_SIBLING_GAP = [
+  25 * Math.PI / 180,  // depth 0: 25° gap between يوسف's children
+  15 * Math.PI / 180,  // depth 1: 15° gap
+  8 * Math.PI / 180,   // depth 2: 8° gap
+  3 * Math.PI / 180,   // depth 3
+  1 * Math.PI / 180,   // depth 4+
+];
+
+function getSiblingGap(depth) {
+  return MIN_SIBLING_GAP[Math.min(depth, MIN_SIBLING_GAP.length - 1)];
+}
+
 // Position computation using angular allocation with guaranteed spacing
 function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
   node._x = cx;
@@ -267,20 +281,27 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
 
   const nextLen = Math.max(branchLen * BRANCH_LENGTH_DECAY, MIN_BRANCH_LENGTH);
   const totalWeight = node.children.reduce((s, ch) => s + ch._leafCount, 0);
+  const numChildren = node.children.length;
+  const gap = getSiblingGap(depth);
 
-  // Ensure minimum angle per leaf descendant
+  // Total gap space needed between children
+  const totalGap = Math.max(0, (numChildren - 1)) * gap;
+
+  // Available span for actual branch allocation (after gaps)
   const parentSpan = angleEnd - angleStart;
+  const allocSpan = Math.max(parentSpan - totalGap, parentSpan * 0.5);
 
   let currentAngle = angleStart;
-  for (const child of node.children) {
+  for (let i = 0; i < node.children.length; i++) {
+    const child = node.children[i];
     const share = child._leafCount / totalWeight;
-    const childSpan = share * parentSpan;
+    const childSpan = share * allocSpan;
     const childAngleStart = currentAngle;
     const childAngleEnd = currentAngle + childSpan;
     const midAngle = (childAngleStart + childAngleEnd) / 2;
 
-    const angleJitter = (rng() - 0.5) * 2 * (Math.PI / 180);
-    const lenJitter = 1 + (rng() - 0.5) * 0.12;
+    const angleJitter = (rng() - 0.5) * 1.5 * (Math.PI / 180);
+    const lenJitter = 1 + (rng() - 0.5) * 0.1;
 
     const effectiveAngle = midAngle + angleJitter;
     const effectiveLen = branchLen * lenJitter;
@@ -289,7 +310,7 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
     const ny = cy - Math.cos(effectiveAngle) * effectiveLen;
 
     layoutTree(child, nx, ny, childAngleStart, childAngleEnd, depth + 1, nextLen);
-    currentAngle = childAngleEnd;
+    currentAngle = childAngleEnd + gap;
   }
 }
 
