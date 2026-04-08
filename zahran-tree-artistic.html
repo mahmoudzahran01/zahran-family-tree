@@ -216,11 +216,11 @@ const yousefNode = TREE_DATA.children[0]; // يوسف زهران
 const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
 
 // Layout parameters
-const TRUNK_LENGTH = 180;
-const BASE_BRANCH_LENGTH = 160;
-const BRANCH_LENGTH_DECAY = 0.82;
-const MIN_BRANCH_LENGTH = 55;
-const MIN_TIP_SPACING = 65; // minimum pixels between leaf tips
+const TRUNK_LENGTH = 220;
+const BASE_BRANCH_LENGTH = 280;
+const BRANCH_LENGTH_DECAY = 0.85;
+const MIN_BRANCH_LENGTH = 90;
+const MIN_TIP_SPACING = 120; // minimum pixels between leaf tips
 
 // We'll place يوسف at (0, 0) and the tree grows upward (negative Y).
 // محمد will be below يوسف (positive Y = below in screen, which is root area).
@@ -255,7 +255,7 @@ const minAnglePerLeaf = MIN_TIP_SPACING / outerRadius;
 // Compute needed total angle
 const totalLeafCount = countDescendants(yousefNode);
 const neededAngle = totalLeafCount * minAnglePerLeaf;
-const availableAngle = Math.max(neededAngle, 170 * Math.PI / 180);
+const availableAngle = Math.max(neededAngle, 2 * Math.PI); // full 360 degrees
 
 // Position computation using angular allocation with guaranteed spacing
 function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
