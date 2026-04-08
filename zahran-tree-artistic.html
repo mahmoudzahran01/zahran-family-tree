@@ -4,497 +4,1054 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>شجرة عائلة زهران</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  background: #FDF8F0;
-  font-family: 'Amiri', serif;
+html, body {
+  width: 100%; height: 100%;
   overflow: hidden;
-  width: 100vw;
-  height: 100vh;
+  background: #FDF8F0;
+  font-family: 'Amiri', 'Traditional Arabic', 'Noto Naskh Arabic', serif;
 }
-#title {
+#canvas-container {
+  width: 100vw; height: 100vh;
+  cursor: grab;
+  position: absolute;
+  top: 0; left: 0;
+}
+#canvas-container:active { cursor: grabbing; }
+svg { display: block; }
+
+#title-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 36px;
-  font-weight: 700;
-  color: #3E2723;
-  padding: 12px 0 8px 0;
-  background: linear-gradient(to bottom, #FDF8F0 60%, rgba(253,248,240,0));
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 10;
+  text-align: center;
   pointer-events: none;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+#title-overlay h1 {
+  font-size: 38px;
+  color: #3E2723;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  font-weight: 700;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, rgba(255,248,225,0.9), rgba(253,245,230,0.85));
+  padding: 10px 30px;
+  border-radius: 12px;
+  border: 2px solid rgba(93,64,55,0.15);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+#title-overlay p {
+  font-size: 15px;
+  color: #795548;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
 #controls {
   position: fixed;
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 10;
   display: flex;
   gap: 8px;
-  z-index: 10;
   background: rgba(255,255,255,0.9);
   padding: 8px 16px;
   border-radius: 24px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
 }
 #controls button {
-  font-family: 'Amiri', serif;
-  font-size: 14px;
-  padding: 6px 14px;
-  border: 1px solid #BCAAA4;
-  border-radius: 16px;
-  background: #EFEBE9;
-  color: #3E2723;
+  background: #5D4037;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  font-size: 18px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.2s;
-  white-space: nowrap;
 }
-#controls button:hover { background: #D7CCC8; }
-#search-box {
-  position: fixed;
-  top: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-}
-#search-box input {
-  font-family: 'Amiri', serif;
-  font-size: 16px;
-  padding: 8px 20px;
-  border: 2px solid #BCAAA4;
-  border-radius: 20px;
-  background: rgba(255,255,255,0.95);
-  color: #3E2723;
-  width: 280px;
-  text-align: center;
-  outline: none;
-  direction: rtl;
-}
-#search-box input:focus { border-color: #6D4C41; }
-#search-box input::placeholder { color: #BCAAA4; }
+#controls button:hover { background: #3E2723; }
+
 #tooltip {
   position: fixed;
-  display: none;
-  background: rgba(62,39,35,0.95);
+  background: rgba(62, 39, 35, 0.92);
   color: #FDF8F0;
-  font-family: 'Amiri', serif;
+  padding: 8px 14px;
+  border-radius: 8px;
   font-size: 15px;
-  padding: 10px 16px;
-  border-radius: 10px;
   pointer-events: none;
   z-index: 100;
-  max-width: 320px;
-  line-height: 1.6;
+  display: none;
   direction: rtl;
-  text-align: right;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  max-width: 280px;
+  line-height: 1.6;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
 }
-svg { width: 100%; height: 100%; }
-.link { fill: none; }
-.node-circle { cursor: pointer; }
-.node-text {
+
+#legend {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10;
+  background: rgba(255,255,255,0.88);
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  font-size: 12px;
+  color: #5D4037;
+  direction: rtl;
   font-family: 'Amiri', serif;
-  paint-order: stroke;
-  stroke: #FDF8F0;
-  stroke-width: 3px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  cursor: pointer;
-  fill: #1B0F00;
 }
-.spouse-text {
-  font-family: 'Amiri', serif;
-  paint-order: stroke;
-  stroke: #FDF8F0;
-  stroke-width: 2px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: #6D4C41;
-  cursor: pointer;
-}
-.search-highlight {
-  stroke: #FFD600 !important;
-  stroke-width: 5px !important;
-}
-.search-highlight-bg {
-  fill: #FFD600;
-  opacity: 0.3;
+
+/* Leaf animation */
+@keyframes leafSway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(3deg); }
 }
 </style>
 </head>
 <body>
 
-<div id="title">شجرة عائلة زهران</div>
-<div id="search-box">
-  <input type="text" id="search-input" placeholder="بحث عن اسم...">
+<div id="title-overlay">
+  <h1>شجرة عائلة زهران</h1>
+  <p>Zahran Family Tree</p>
 </div>
+
 <div id="controls">
-  <button onclick="zoomIn()">+</button>
-  <button onclick="zoomOut()">-</button>
-  <button onclick="fitToView()">ملائمة</button>
-  <button onclick="expandAll()">توسيع الكل</button>
-  <button onclick="collapseToLevel(3)">طي للمستوى ٣</button>
+  <button id="zoom-in" title="Zoom In">+</button>
+  <button id="zoom-out" title="Zoom Out">&minus;</button>
+  <button id="zoom-fit" title="Fit View">&#8689;</button>
 </div>
+
 <div id="tooltip"></div>
 
-<svg id="tree-svg"></svg>
+<div id="legend">
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+    <svg width="18" height="18"><circle cx="9" cy="9" r="5" fill="#4E342E"/></svg>
+    <span>فرع (له ذرية)</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <svg width="18" height="18"><path d="M 9,2 C 12,4 13,8 11,12 C 10,15 9,16 9,16 C 9,16 8,15 7,12 C 5,8 6,4 9,2 Z" fill="#4CAF50" stroke="#2E7D32" stroke-width="0.5"/></svg>
+    <span>ورقة (بدون ذرية)</span>
+  </div>
+  <div style="margin-top:6px;font-size:11px;color:#8D6E63;">
+    اسحب للتحريك &bull; عجلة الفأرة للتكبير
+  </div>
+</div>
+
+<div id="canvas-container">
+  <svg id="tree-svg"></svg>
+</div>
 
 <script>
-// Embedded tree data
-const treeData = {"name":"محمد زهران","gender":"m","children":[{"name":"يوسف زهران","gender":"m","children":[{"name":"أحمد زهران","gender":"m"},{"name":"عبدالله زهران","gender":"m","children":[{"name":"عبدالرحمن زهران","gender":"m","children":[{"name":"عبدالله زهران","gender":"m","spouse":"زينب حضرية","children":[{"name":"مصباح","gender":"f","spouse":"بكر"},{"name":"عبدالرحمن زهران","gender":"m"},{"name":"محي زهران","gender":"m","spouse":"فايقة صعيدي","children":[{"name":"زينب زهران","gender":"f","spouse":"عبدالله منصوري"},{"name":"عادل زهران","gender":"m","spouse":"حنان شلبي","children":[{"name":"أريج زهران","gender":"f","spouse":"فراس وصفي"},{"name":"رابعة زهران","gender":"f","spouse":"مازن حصري"},{"name":"رحاب زهران","gender":"f"},{"name":"سلطان زهران","gender":"m"},{"name":"عدنان زهران","gender":"m","spouse":"شروق النهاري"},{"name":"مها زهران","gender":"f"},{"name":"هبة زهران","gender":"f","spouse":"هيثم بخاري"}]},{"name":"عبدالله زهران","gender":"m","spouse":"نوال محمود","children":[{"name":"دارين زهران","gender":"f","spouse":"منصور أبوشوشة"},{"name":"رانية زهران","gender":"f","spouse":"ماجد الحربي"},{"name":"محمد زهران","gender":"m"},{"name":"هيثم زهران","gender":"m","spouse":"نداء بكر","children":[{"name":"جوان زهران","gender":"f"},{"name":"عبدالله زهران","gender":"m"},{"name":"محمد زهران","gender":"m"}]}]},{"name":"علاء زهران","gender":"m","spouse":"حنان باحطاب","children":[{"name":"عبدالرحمن زهران","gender":"m"},{"name":"عمار زهران","gender":"m"},{"name":"عمر زهران","gender":"m"},{"name":"فايقة زهران","gender":"f"},{"name":"محي زهران","gender":"m"},{"name":"نهى زهران","gender":"f","spouse":"وائل الغامدي"},{"name":"هناء زهران","gender":"f","spouse":"وليد سالم"}]},{"name":"فايزة زهران","gender":"f","spouse":"عبدالعزيز جابر"},{"name":"مصباح زهران","gender":"f","spouse":"حسين شلبي"},{"name":"يوسف زهران","gender":"m","children":[{"name":"الاء زهران","gender":"f","spouse":"عاطف المدني"},{"name":"دعاء زهران","gender":"f"},{"name":"رامي زهران","gender":"m"},{"name":"عبدالله زهران","gender":"m"},{"name":"مرام زهران","gender":"f"}]}]}]},{"name":"مصطفى زهران","gender":"m","spouse":"زكية رجب","children":[{"name":"سامي زهران","gender":"m","spouse":"عفاف كيال","children":[{"name":"جواهر زهران","gender":"f"},{"name":"سارة زهران","gender":"f","spouse":"أحمد لاري"},{"name":"سحر زهران","gender":"f","spouse":"عمر عطار"},{"name":"مريم زهران","gender":"f","spouse":"حسن خاشقجي"}]},{"name":"عبدالرحمن زهران","gender":"m","spouse":"خديجة نور سعيد","children":[{"name":"ريان زهران","gender":"m"},{"name":"سلافة زهران","gender":"f","spouse":"ممدوح نور سعيد"},{"name":"وليد زهران","gender":"m"}]},{"name":"عبدالوهاب زهران","gender":"m","spouse":"آمال بكر","children":[{"name":"أحمد زهران","gender":"m"},{"name":"خالد زهران","gender":"m"},{"name":"هاني زهران","gender":"m","spouse":"رولا الطويل","children":[{"name":"فيصل زهران","gender":"m"}]},{"name":"هتون زهران","gender":"f","spouse":"هشام حمزة"},{"name":"هوازن زهران","gender":"f"}]},{"name":"فؤاد زهران","gender":"m","spouse":"هدى بكر","children":[{"name":"رانية زهران","gender":"f"},{"name":"رفيف زهران","gender":"f"},{"name":"رنين زهران","gender":"f"},{"name":"فهد زهران","gender":"m","children":[{"name":"مايا زهران","gender":"f"},{"name":"هدى زهران","gender":"f"}],"spouse":"غيداء محمود"},{"name":"روان زهران","gender":"f"}]},{"name":"فاروق زهران","gender":"m","spouse":"فريال كيال","children":[{"name":"أريج زهران","gender":"f"},{"name":"عمار زهران","gender":"m","spouse":"إيمان محفوظ","children":[{"name":"فاروق زهران","gender":"m","spouse":"مايا ادريس","children":[{"name":"ايمان زهران","gender":"f"}]},{"name":"ماجد زهران","gender":"m","spouse":"ياسمين بن لادن","children":[{"name":"سلطان زهران","gender":"m"}]},{"name":"يوسف زهران","gender":"m"}]},{"name":"عمرو زهران","gender":"m","spouse":"منال الجليدان","children":[{"name":"هالة زهران","gender":"f"}]},{"name":"مصطفى زهران","gender":"m","spouse":"دينا رجب","children":[{"name":"بدر زهران","gender":"m"},{"name":"جود زهران","gender":"f"},{"name":"فيصل زهران","gender":"m"}]}]},{"name":"محمد زهران","gender":"m","spouse":"ليلى كيال","children":[{"name":"أحمد زهران","gender":"m","spouse":"سارة غراب","children":[{"name":"ليلى زهران","gender":"f"},{"name":"حمزه زهران","gender":"m"}]},{"name":"طارق زهران","gender":"m"},{"name":"مرام زهران","gender":"f"},{"name":"منال زهران","gender":"f"},{"name":"نسرين زهران","gender":"f"},{"name":"نورا زهران","gender":"f"}]},{"name":"نفيسه زهران","gender":"f"}]}]},{"name":"محمود زهران","gender":"m","spouse":"فاطمة","children":[{"name":"سعاد زهران","gender":"f"},{"name":"علي زهران","gender":"m","spouse":"خديجة بنان","children":[{"name":"أسعد زهران","gender":"m","spouse":"عزة شلبي","children":[{"name":"ليلى زهران","gender":"f"},{"name":"محمد زهران","gender":"m"},{"name":"نور زهران","gender":"f"}]},{"name":"سعاد زهران","gender":"f"},{"name":"عبدالمجيد زهران","gender":"m","children":[{"name":"عاطف زهران","gender":"m"},{"name":"عصام زهران","gender":"m","children":[{"name":"تركي زهران","gender":"m"},{"name":"رهف زهران","gender":"f"},{"name":"ريتال زهران","gender":"f"},{"name":"فتون زهران","gender":"f"}]},{"name":"عماد زهران","gender":"m","children":[{"name":"رغد زهران","gender":"f"},{"name":"محمد زهران","gender":"m"}]},{"name":"هبة زهران","gender":"f"},{"name":"هدية زهران","gender":"f"},{"name":"همسة زهران","gender":"f"},{"name":"هنادي زهران","gender":"f","spouse":"نواف زهران"}]},{"name":"عمر زهران","gender":"m","spouse":"آمنه عبدالشكور","children":[{"name":"إبراهيم زهران","gender":"m","spouse":"ميرفت قزني","children":[{"name":"رزان زهران","gender":"f","spouse":"فيصل القويحص"},{"name":"رفان زهران","gender":"f","spouse":"أحمد غندوره"},{"name":"عبدالرحمن زهران","gender":"m","spouse":"أضواء السديري","children":[{"name":"لين زهران","gender":"f"}]},{"name":"نورة زهران","gender":"f"}]},{"name":"سامي زهران","gender":"m","spouse":"سونيا طاهر","children":[{"name":"آمنة زهران","gender":"f"},{"name":"آمنه زهران","gender":"f"},{"name":"دعاء زهران","gender":"f","spouse":"ياسر سندي / فيصل عبدالجواد"},{"name":"رائد زهران","gender":"m","spouse":"هديل راجخان","children":[{"name":"دانه زهران","gender":"f"},{"name":"ريما زهران","gender":"f"}]},{"name":"ريان زهران","gender":"m","spouse":"زينب المحضار / فاتيسلافا زهران"},{"name":"فارس زهران","gender":"m"},{"name":"فوزان زهران","gender":"m","spouse":"سكينة الغوتي / فاني الحامد","children":[{"name":"ريبال زهران","gender":"m"}]}]},{"name":"عادل زهران","gender":"m"},{"name":"عصمت زهران","gender":"m","spouse":"عطيات","children":[{"name":"حنين زهران","gender":"f","spouse":"حسام غرباوي / أحمد باشهاب"},{"name":"راكان زهران","gender":"m","spouse":"ريم الحفيان","children":[{"name":"ذكرى زهران","gender":"f"},{"name":"يسرى زهران","gender":"f"}]},{"name":"شادي زهران","gender":"m","spouse":"حنين الحفيان","children":[{"name":"آمنة زهران","gender":"f"},{"name":"الحسن زهران","gender":"m"},{"name":"الحسين زهران","gender":"m"},{"name":"بشرى زهران","gender":"f"},{"name":"تالية زهران","gender":"f"},{"name":"سدرة زهران","gender":"f"},{"name":"عليا زهران","gender":"f"}]},{"name":"فادي زهران","gender":"m"},{"name":"هتان زهران","gender":"m"}]},{"name":"علي زهران","gender":"m","spouse":"علياء الجفري","children":[{"name":"عروب زهران","gender":"f","spouse":"صبحي السبع"},{"name":"علا زهران","gender":"f","spouse":"أحمد كجك"},{"name":"علاء زهران","gender":"m","spouse":"رقية بن لادن","children":[{"name":"عبدالله زهران","gender":"m"},{"name":"محمد زهران","gender":"m"},{"name":"معتصم زهران","gender":"m"}]},{"name":"عمر زهران","gender":"m","spouse":"دلال","children":[{"name":"عبدالله زهران","gender":"m"},{"name":"علياء زهران","gender":"f"},{"name":"يوسف زهران","gender":"m"}]}]}]},{"name":"فؤاد زهران","gender":"m","spouse":"فاطمة جاوي","children":[{"name":"أحمد زهران","gender":"m"},{"name":"سحر زهران","gender":"f"},{"name":"طلال زهران","gender":"m"},{"name":"عادية زهران","gender":"f"},{"name":"علي زهران","gender":"m"},{"name":"ماجد زهران","gender":"m"},{"name":"محمد زهران","gender":"m"},{"name":"هيفاء زهران","gender":"f"}]},{"name":"محمود زهران","gender":"m","spouse":"عواطف عطية","children":[{"name":"أيمن زهران","gender":"m","spouse":"هناء بيلي","children":[{"name":"العنود زهران","gender":"f"},{"name":"عبدالرحمن زهران","gender":"m"},{"name":"لانا زهران","gender":"f"},{"name":"لمى زهران","gender":"f"},{"name":"محمد زهران","gender":"m"}]},{"name":"بيان زهران","gender":"f"},{"name":"حبيب زهران","gender":"m","spouse":"روان السليماني","children":[{"name":"ريان زهران","gender":"m"},{"name":"عبدالرحمن زهران","gender":"m"}]},{"name":"علي زهران","gender":"m","spouse":"فاطمة سرحان","children":[{"name":"أحمد زهران","gender":"m"},{"name":"إياد زهران","gender":"m"},{"name":"ريتال زهران","gender":"f"},{"name":"عواطف زهران","gender":"f"},{"name":"محمد زهران","gender":"m"},{"name":"محمد زهران","gender":"m"},{"name":"محمود زهران","gender":"m"},{"name":"مهند زهران","gender":"m"}]},{"name":"محمد زهران","gender":"m","spouse":"خلود السليماني","children":[{"name":"عبدالرؤوف زهران","gender":"m"},{"name":"لمار زهران","gender":"f"},{"name":"محمود زهران","gender":"m"}]},{"name":"نواف زهران","gender":"m","spouse":"هنادي زهران","children":[{"name":"نايف زهران","gender":"m"},{"name":"بدر زهران","gender":"m"},{"name":"عبدالله زهران","gender":"m"},{"name":"يوسف زهران","gender":"m"}]},{"name":"نور زهران","gender":"f"},{"name":"هاني زهران","gender":"m","children":[{"name":"براء زهران","gender":"m"},{"name":"حلا زهران","gender":"f"},{"name":"دانه زهران","gender":"f"},{"name":"لارا زهران","gender":"f"},{"name":"ليان زهران","gender":"f"},{"name":"محمود زهران","gender":"m"}]},{"name":"وائل زهران","gender":"m","children":[{"name":"أصيل زهران","gender":"m"},{"name":"بيان زهران","gender":"f"},{"name":"فيصل زهران","gender":"m"}]}]}]},{"name":"نور زهران","gender":"f"}]},{"name":"يوسف زهران","gender":"m","children":[{"name":"محمد زهران","gender":"m","children":[{"name":"أنيسة زهران","gender":"f"},{"name":"حسن زهران","gender":"m"},{"name":"زكية زهران","gender":"f"},{"name":"فوزية زهران","gender":"f"},{"name":"هنية زهران","gender":"f"},{"name":"يوسف زهران","gender":"m"}]}]}]},{"name":"محمد زهران","gender":"m","children":[{"name":"حامد زهران","gender":"m","children":[{"name":"[غير معروف]","gender":"m"},{"name":"خديجة زهران","gender":"f"},{"name":"رقية زهران","gender":"f"},{"name":"سالم زهران","gender":"m","children":[{"name":"فاطمة","gender":"f"},{"name":"عبدالله زهران","gender":"m","spouse":"مريم دخيل","children":[{"name":"محمد زهران","gender":"m","spouse":"سلافه يوسف / فاطمة شربيني / ايمان قمصاني","children":[{"name":"باسل زهران","gender":"m"},{"name":"عبدالله زهران","gender":"m"},{"name":"ماجد زهران","gender":"m","spouse":"العنود المالكي","children":[{"name":"يوسف","gender":"m"}]},{"name":"هديل زهران","gender":"f","spouse":"ناجي حماد"}]},{"name":"هيفاء","gender":"f","spouse":"طلال كركشان"},{"name":"لمياء","gender":"f","spouse":"عبدالله مسعودي"},{"name":"جوهره","gender":"f","spouse":"عبدالقادر الصبان"}]},{"name":"مريم زهران","gender":"f","spouse":"حسن زهران","children":[{"name":"سالم","gender":"m"}]}]},{"name":"عائشة زهران","gender":"f"},{"name":"فاطمة زهران","gender":"f"},{"name":"محمد زهران","gender":"m","children":[{"name":"آمنه زهران","gender":"f"},{"name":"حامد زهران","gender":"m","children":[{"name":"آمنه","gender":"f"},{"name":"سراج زهران","gender":"m","children":[{"name":"عفاف","gender":"f","spouse":"احمد السليمان"},{"name":"فيصل","gender":"m"},{"name":"اسامه","gender":"m","spouse":"رنده المالكي / سيفين فاخوري","children":[{"name":"مشعل","gender":"m","spouse":"تامي جرجس"},{"name":"كرمه","gender":"f"},{"name":"فيصل","gender":"m"}]},{"name":"يوسف","gender":"m","spouse":"لورا هولند / أليسون شوايزر","children":[{"name":"فرح","gender":"f"},{"name":"فهد","gender":"m"},{"name":"كاميرون","gender":"m"}]},{"name":"مي","gender":"f"}],"spouse":"جواهر جوخدار / آمنة / جاكلين روسيل / جيهان"}]}]},{"name":"مصباح زهران","gender":"f"}]},{"name":"زينب زهران","gender":"f"},{"name":"صالح زهران","gender":"m","children":[{"name":"سليمان زهران","gender":"m","spouse":"جميلة بنتن","children":[{"name":"أحمد زهران","gender":"m","spouse":"زهيه رضا","children":[{"name":"أسامة زهران","gender":"m"},{"name":"بندر زهران","gender":"m","spouse":"رابيه الخريجي","children":[{"name":"أحمد زهران","gender":"m"},{"name":"عبدالعزيز زهران","gender":"m"}]},{"name":"خالد زهران","gender":"m"},{"name":"خلود زهران","gender":"f","spouse":"إبراهيم طالبي"},{"name":"داليا زهران","gender":"f"},{"name":"مها زهران","gender":"f","spouse":"عدنان باخريبة"},{"name":"هنادي زهران","gender":"f","spouse":"وليد تميرك"}]},{"name":"أماني زهران","gender":"f","spouse":"طارق بافضل"},{"name":"أمل زهران","gender":"f","spouse":"عبدالعزيز الثمالي"},{"name":"إعتدال زهران","gender":"f","spouse":"صالح باسودان"},{"name":"إعتماد زهران","gender":"f","spouse":"عبالرحمن أبوالحمايل"},{"name":"زكية زهران","gender":"f","spouse":"جمال عبده"},{"name":"عبدالمجيد زهران","gender":"m","spouse":"هبه المعمر","children":[{"name":"ديمه زهران","gender":"f"},{"name":"سليمان زهران","gender":"m"},{"name":"عبدالعزيز زهران","gender":"m"},{"name":"عبدالله زهران","gender":"m"},{"name":"لولوه زهران","gender":"f"},{"name":"ناصر زهران","gender":"m"}]},{"name":"عناية زهران","gender":"f","spouse":"خالد باوزير"},{"name":"محمد زهران","gender":"m","spouse":"ساميه حفني","children":[{"name":"أحمد زهران","gender":"m"},{"name":"إيمان زهران","gender":"f","spouse":"رائد حنيف"},{"name":"راكان زهران","gender":"m","spouse":"شيماء خضري","children":[{"name":"محمد زهران","gender":"m"}]},{"name":"سليمان زهران","gender":"m","spouse":"شيماء مختار","children":[{"name":"لمار زهران","gender":"f"}]},{"name":"هتان زهران","gender":"m","spouse":"آلاء باناصر","children":[{"name":"ساميه زهران","gender":"f"}]}]},{"name":"منى زهران","gender":"f","spouse":"فتحي راجخان"},{"name":"نور زهران","gender":"f","spouse":"عبدالجليل أبوالحمايل"}]},{"name":"محمد زهران","gender":"m","children":[{"name":"جواهر زهران","gender":"f"},{"name":"حامد زهران","gender":"m","children":[{"name":"عاطف زهران","gender":"m"}]},{"name":"صالح زهران","gender":"m","spouse":"وداد سرتي","children":[{"name":"باسم زهران","gender":"m","spouse":"أمل العامودي","children":[{"name":"أسماء زهران","gender":"f"},{"name":"رغد زهران","gender":"f"},{"name":"صالح زهران","gender":"m"},{"name":"صهيب زهران","gender":"m"},{"name":"عبدالرحمن زهران","gender":"m"},{"name":"عبدالله زهران","gender":"m"}]},{"name":"بسمة زهران","gender":"f","spouse":"خالد صابر"},{"name":"تهاني زهران","gender":"f","spouse":"عليوي الحمدان"},{"name":"خالد زهران","gender":"m","spouse":"هيام سرتي","children":[{"name":"إسراء زهران","gender":"f"},{"name":"البراء زهران","gender":"m"},{"name":"سراج زهران","gender":"m","children":[{"name":"خالد زهران","gender":"m"},{"name":"ماريه زهران","gender":"f"},{"name":"هايدي","gender":"f"},{"name":"سارة","gender":"f"}]},{"name":"نداء زهران","gender":"f"}]}]}]}]},{"name":"عثمان زهران","gender":"m","children":[{"name":"أحمد زهران","gender":"m"}]}]}]}]};
+// ===== TREE DATA =====
+const TREE_DATA = {"name": "محمد زهران", "gender": "m", "children": [{"name": "يوسف زهران", "gender": "m", "children": [{"name": "أحمد زهران", "gender": "m"}, {"name": "عبدالله زهران", "gender": "m", "children": [{"name": "عبدالرحمن زهران", "gender": "m", "children": [{"name": "عبدالله زهران", "gender": "m", "spouse": "زينب حضرية", "children": [{"name": "مصباح", "gender": "f", "spouse": "بكر"}, {"name": "عبدالرحمن زهران", "gender": "m"}, {"name": "محي زهران", "gender": "m", "spouse": "فايقة صعيدي", "children": [{"name": "زينب زهران", "gender": "f", "spouse": "عبدالله منصوري"}, {"name": "عادل زهران", "gender": "m", "spouse": "حنان شلبي", "children": [{"name": "أريج زهران", "gender": "f", "spouse": "فراس وصفي"}, {"name": "رابعة زهران", "gender": "f", "spouse": "مازن حصري"}, {"name": "رحاب زهران", "gender": "f"}, {"name": "سلطان زهران", "gender": "m"}, {"name": "عدنان زهران", "gender": "m", "spouse": "شروق النهاري"}, {"name": "مها زهران", "gender": "f"}, {"name": "هبة زهران", "gender": "f", "spouse": "هيثم بخاري"}]}, {"name": "عبدالله زهران", "gender": "m", "spouse": "نوال محمود", "children": [{"name": "دارين زهران", "gender": "f", "spouse": "منصور أبوشوشة"}, {"name": "رانية زهران", "gender": "f", "spouse": "ماجد الحربي"}, {"name": "محمد زهران", "gender": "m"}, {"name": "هيثم زهران", "gender": "m", "spouse": "نداء بكر", "children": [{"name": "جوان زهران", "gender": "f"}, {"name": "عبدالله زهران", "gender": "m"}, {"name": "محمد زهران", "gender": "m"}]}]}, {"name": "علاء زهران", "gender": "m", "spouse": "حنان باحطاب", "children": [{"name": "عبدالرحمن زهران", "gender": "m"}, {"name": "عمار زهران", "gender": "m"}, {"name": "عمر زهران", "gender": "m"}, {"name": "فايقة زهران", "gender": "f"}, {"name": "محي زهران", "gender": "m"}, {"name": "نهى زهران", "gender": "f", "spouse": "وائل الغامدي"}, {"name": "هناء زهران", "gender": "f", "spouse": "وليد سالم"}]}, {"name": "فايزة زهران", "gender": "f", "spouse": "عبدالعزيز جابر"}, {"name": "مصباح زهران", "gender": "f", "spouse": "حسين شلبي"}, {"name": "يوسف زهران", "gender": "m", "children": [{"name": "الاء زهران", "gender": "f", "spouse": "عاطف المدني"}, {"name": "دعاء زهران", "gender": "f"}, {"name": "رامي زهران", "gender": "m"}, {"name": "عبدالله زهران", "gender": "m"}, {"name": "مرام زهران", "gender": "f"}]}]}]}, {"name": "مصطفى زهران", "gender": "m", "spouse": "زكية رجب", "children": [{"name": "سامي زهران", "gender": "m", "spouse": "عفاف كيال", "children": [{"name": "جواهر زهران", "gender": "f"}, {"name": "سارة زهران", "gender": "f", "spouse": "أحمد لاري"}, {"name": "سحر زهران", "gender": "f", "spouse": "عمر عطار"}, {"name": "مريم زهران", "gender": "f", "spouse": "حسن خاشقجي"}]}, {"name": "عبدالرحمن زهران", "gender": "m", "spouse": "خديجة نور سعيد", "children": [{"name": "ريان زهران", "gender": "m"}, {"name": "سلافة زهران", "gender": "f", "spouse": "ممدوح نور سعيد"}, {"name": "وليد زهران", "gender": "m"}]}, {"name": "عبدالوهاب زهران", "gender": "m", "spouse": "آمال بكر", "children": [{"name": "أحمد زهران", "gender": "m"}, {"name": "خالد زهران", "gender": "m"}, {"name": "هاني زهران", "gender": "m", "spouse": "رولا الطويل", "children": [{"name": "فيصل زهران", "gender": "m"}]}, {"name": "هتون زهران", "gender": "f", "spouse": "هشام حمزة"}, {"name": "هوازن زهران", "gender": "f"}]}, {"name": "فؤاد زهران", "gender": "m", "spouse": "هدى بكر", "children": [{"name": "رانية زهران", "gender": "f"}, {"name": "رفيف زهران", "gender": "f"}, {"name": "رنين زهران", "gender": "f"}, {"name": "فهد زهران", "gender": "m", "children": [{"name": "مايا زهران", "gender": "f"}, {"name": "هدى زهران", "gender": "f"}], "spouse": "غيداء محمود"}, {"name": "روان زهران", "gender": "f"}]}, {"name": "فاروق زهران", "gender": "m", "spouse": "فريال كيال", "children": [{"name": "أريج زهران", "gender": "f"}, {"name": "عمار زهران", "gender": "m", "spouse": "إيمان محفوظ", "children": [{"name": "فاروق زهران", "gender": "m", "spouse": "مايا ادريس", "children": [{"name": "ايمان زهران", "gender": "f"}]}, {"name": "ماجد زهران", "gender": "m", "spouse": "ياسمين بن لادن", "children": [{"name": "سلطان زهران", "gender": "m"}]}, {"name": "يوسف زهران", "gender": "m"}]}, {"name": "عمرو زهران", "gender": "m", "spouse": "منال الجليدان", "children": [{"name": "هالة زهران", "gender": "f"}]}, {"name": "مصطفى زهران", "gender": "m", "spouse": "دينا رجب", "children": [{"name": "بدر زهران", "gender": "m"}, {"name": "جود زهران", "gender": "f"}, {"name": "فيصل زهران", "gender": "m"}]}]}, {"name": "محمد زهران", "gender": "m", "spouse": "ليلى كيال", "children": [{"name": "أحمد زهران", "gender": "m", "spouse": "سارة غراب", "children": [{"name": "ليلى زهران", "gender": "f"}, {"name": "حمزه زهران", "gender": "m"}]}, {"name": "طارق زهران", "gender": "m"}, {"name": "مرام زهران", "gender": "f"}, {"name": "منال زهران", "gender": "f"}, {"name": "نسرين زهران", "gender": "f"}, {"name": "نورا زهران", "gender": "f"}]}, {"name": "نفيسه زهران", "gender": "f"}]}]}, {"name": "محمود زهران", "gender": "m", "spouse": "فاطمة", "children": [{"name": "سعاد زهران", "gender": "f"}, {"name": "علي زهران", "gender": "m", "spouse": "خديجة بنان", "children": [{"name": "أسعد زهران", "gender": "m", "spouse": "عزة شلبي", "children": [{"name": "ليلى زهران", "gender": "f"}, {"name": "محمد زهران", "gender": "m"}, {"name": "نور زهران", "gender": "f"}]}, {"name": "سعاد زهران", "gender": "f"}, {"name": "عبدالمجيد زهران", "gender": "m", "children": [{"name": "عاطف زهران", "gender": "m"}, {"name": "عصام زهران", "gender": "m", "children": [{"name": "تركي زهران", "gender": "m"}, {"name": "رهف زهران", "gender": "f"}, {"name": "ريتال زهران", "gender": "f"}, {"name": "فتون زهران", "gender": "f"}]}, {"name": "عماد زهران", "gender": "m", "children": [{"name": "رغد زهران", "gender": "f"}, {"name": "محمد زهران", "gender": "m"}]}, {"name": "هبة زهران", "gender": "f"}, {"name": "هدية زهران", "gender": "f"}, {"name": "همسة زهران", "gender": "f"}, {"name": "هنادي زهران", "gender": "f", "spouse": "نواف زهران"}]}, {"name": "عمر زهران", "gender": "m", "spouse": "آمنه عبدالشكور", "children": [{"name": "إبراهيم زهران", "gender": "m", "spouse": "ميرفت قزني", "children": [{"name": "رزان زهران", "gender": "f", "spouse": "فيصل القويحص"}, {"name": "رفان زهران", "gender": "f", "spouse": "أحمد غندوره"}, {"name": "عبدالرحمن زهران", "gender": "m", "spouse": "أضواء السديري", "children": [{"name": "لين زهران", "gender": "f"}]}, {"name": "نورة زهران", "gender": "f"}]}, {"name": "سامي زهران", "gender": "m", "spouse": "سونيا طاهر", "children": [{"name": "آمنة زهران", "gender": "f"}, {"name": "آمنه زهران", "gender": "f"}, {"name": "دعاء زهران", "gender": "f", "spouse": "ياسر سندي / فيصل عبدالجواد"}, {"name": "رائد زهران", "gender": "m", "spouse": "هديل راجخان", "children": [{"name": "دانه زهران", "gender": "f"}, {"name": "ريما زهران", "gender": "f"}]}, {"name": "ريان زهران", "gender": "m", "spouse": "زينب المحضار / فاتيسلافا زهران"}, {"name": "فارس زهران", "gender": "m"}, {"name": "فوزان زهران", "gender": "m", "spouse": "سكينة الغوتي / فاني الحامد", "children": [{"name": "ريبال زهران", "gender": "m"}]}]}, {"name": "عادل زهران", "gender": "m"}, {"name": "عصمت زهران", "gender": "m", "spouse": "عطيات", "children": [{"name": "حنين زهران", "gender": "f", "spouse": "حسام غرباوي / أحمد باشهاب"}, {"name": "راكان زهران", "gender": "m", "spouse": "ريم الحفيان", "children": [{"name": "ذكرى زهران", "gender": "f"}, {"name": "يسرى زهران", "gender": "f"}]}, {"name": "شادي زهران", "gender": "m", "spouse": "حنين الحفيان", "children": [{"name": "آمنة زهران", "gender": "f"}, {"name": "الحسن زهران", "gender": "m"}, {"name": "الحسين زهران", "gender": "m"}, {"name": "بشرى زهران", "gender": "f"}, {"name": "تالية زهران", "gender": "f"}, {"name": "سدرة زهران", "gender": "f"}, {"name": "عليا زهران", "gender": "f"}]}, {"name": "فادي زهران", "gender": "m"}, {"name": "هتان زهران", "gender": "m"}]}, {"name": "علي زهران", "gender": "m", "spouse": "علياء الجفري", "children": [{"name": "عروب زهران", "gender": "f", "spouse": "صبحي السبع"}, {"name": "علا زهران", "gender": "f", "spouse": "أحمد كجك"}, {"name": "علاء زهران", "gender": "m", "spouse": "رقية بن لادن", "children": [{"name": "عبدالله زهران", "gender": "m"}, {"name": "محمد زهران", "gender": "m"}, {"name": "معتصم زهران", "gender": "m"}]}, {"name": "عمر زهران", "gender": "m", "spouse": "دلال", "children": [{"name": "عبدالله زهران", "gender": "m"}, {"name": "علياء زهران", "gender": "f"}, {"name": "يوسف زهران", "gender": "m"}]}]}]}, {"name": "فؤاد زهران", "gender": "m", "spouse": "فاطمة جاوي", "children": [{"name": "أحمد زهران", "gender": "m"}, {"name": "سحر زهران", "gender": "f"}, {"name": "طلال زهران", "gender": "m"}, {"name": "عادية زهران", "gender": "f"}, {"name": "علي زهران", "gender": "m"}, {"name": "ماجد زهران", "gender": "m"}, {"name": "محمد زهران", "gender": "m"}, {"name": "هيفاء زهران", "gender": "f"}]}, {"name": "محمود زهران", "gender": "m", "spouse": "عواطف عطية", "children": [{"name": "أيمن زهران", "gender": "m", "spouse": "هناء بيلي", "children": [{"name": "العنود زهران", "gender": "f"}, {"name": "عبدالرحمن زهران", "gender": "m"}, {"name": "لانا زهران", "gender": "f"}, {"name": "لمى زهران", "gender": "f"}, {"name": "محمد زهران", "gender": "m"}]}, {"name": "بيان زهران", "gender": "f"}, {"name": "حبيب زهران", "gender": "m", "spouse": "روان السليماني", "children": [{"name": "ريان زهران", "gender": "m"}, {"name": "عبدالرحمن زهران", "gender": "m"}]}, {"name": "علي زهران", "gender": "m", "spouse": "فاطمة سرحان", "children": [{"name": "أحمد زهران", "gender": "m"}, {"name": "إياد زهران", "gender": "m"}, {"name": "ريتال زهران", "gender": "f"}, {"name": "عواطف زهران", "gender": "f"}, {"name": "محمد زهران", "gender": "m"}, {"name": "محمد زهران", "gender": "m"}, {"name": "محمود زهران", "gender": "m"}, {"name": "مهند زهران", "gender": "m"}]}, {"name": "محمد زهران", "gender": "m", "spouse": "خلود السليماني", "children": [{"name": "عبدالرؤوف زهران", "gender": "m"}, {"name": "لمار زهران", "gender": "f"}, {"name": "محمود زهران", "gender": "m"}]}, {"name": "نواف زهران", "gender": "m", "spouse": "هنادي زهران", "children": [{"name": "نايف زهران", "gender": "m"}, {"name": "بدر زهران", "gender": "m"}, {"name": "عبدالله زهران", "gender": "m"}, {"name": "يوسف زهران", "gender": "m"}]}, {"name": "نور زهران", "gender": "f"}, {"name": "هاني زهران", "gender": "m", "children": [{"name": "براء زهران", "gender": "m"}, {"name": "حلا زهران", "gender": "f"}, {"name": "دانه زهران", "gender": "f"}, {"name": "لارا زهران", "gender": "f"}, {"name": "ليان زهران", "gender": "f"}, {"name": "محمود زهران", "gender": "m"}]}, {"name": "وائل زهران", "gender": "m", "children": [{"name": "أصيل زهران", "gender": "m"}, {"name": "بيان زهران", "gender": "f"}, {"name": "فيصل زهران", "gender": "m"}]}]}]}, {"name": "نور زهران", "gender": "f"}]}, {"name": "يوسف زهران", "gender": "m", "children": [{"name": "محمد زهران", "gender": "m", "children": [{"name": "أنيسة زهران", "gender": "f"}, {"name": "حسن زهران", "gender": "m"}, {"name": "زكية زهران", "gender": "f"}, {"name": "فوزية زهران", "gender": "f"}, {"name": "هنية زهران", "gender": "f"}, {"name": "يوسف زهران", "gender": "m"}]}]}]}, {"name": "محمد زهران", "gender": "m", "children": [{"name": "حامد زهران", "gender": "m", "children": [{"name": "[غير معروف]", "gender": "m"}, {"name": "خديجة زهران", "gender": "f"}, {"name": "رقية زهران", "gender": "f"}, {"name": "سالم زهران", "gender": "m", "children": [{"name": "فاطمة", "gender": "f"}, {"name": "عبدالله زهران", "gender": "m", "spouse": "مريم دخيل", "children": [{"name": "محمد زهران", "gender": "m", "spouse": "سلافه يوسف / فاطمة شربيني / ايمان قمصاني", "children": [{"name": "باسل زهران", "gender": "m"}, {"name": "عبدالله زهران", "gender": "m"}, {"name": "ماجد زهران", "gender": "m", "spouse": "العنود المالكي", "children": [{"name": "يوسف", "gender": "m"}]}, {"name": "هديل زهران", "gender": "f", "spouse": "ناجي حماد"}]}, {"name": "هيفاء", "gender": "f", "spouse": "طلال كركشان"}, {"name": "لمياء", "gender": "f", "spouse": "عبدالله مسعودي"}, {"name": "جوهره", "gender": "f", "spouse": "عبدالقادر الصبان"}]}, {"name": "مريم زهران", "gender": "f", "spouse": "حسن زهران", "children": [{"name": "سالم", "gender": "m"}]}]}, {"name": "عائشة زهران", "gender": "f"}, {"name": "فاطمة زهران", "gender": "f"}, {"name": "محمد زهران", "gender": "m", "children": [{"name": "آمنه زهران", "gender": "f"}, {"name": "حامد زهران", "gender": "m", "children": [{"name": "آمنه", "gender": "f"}, {"name": "سراج زهران", "gender": "m", "children": [{"name": "عفاف", "gender": "f", "spouse": "احمد السليمان"}, {"name": "فيصل", "gender": "m"}, {"name": "اسامه", "gender": "m", "spouse": "رنده المالكي / سيفين فاخوري", "children": [{"name": "مشعل", "gender": "m", "spouse": "تامي جرجس"}, {"name": "كرمه", "gender": "f"}, {"name": "فيصل", "gender": "m"}]}, {"name": "يوسف", "gender": "m", "spouse": "لورا هولند / أليسون شوايزر", "children": [{"name": "فرح", "gender": "f"}, {"name": "فهد", "gender": "m"}, {"name": "كاميرون", "gender": "m"}]}, {"name": "مي", "gender": "f"}], "spouse": "جواهر جوخدار / آمنة / جاكلين روسيل / جيهان"}]}]}, {"name": "مصباح زهران", "gender": "f"}]}, {"name": "زينب زهران", "gender": "f"}, {"name": "صالح زهران", "gender": "m", "children": [{"name": "سليمان زهران", "gender": "m", "spouse": "جميلة بنتن", "children": [{"name": "أحمد زهران", "gender": "m", "spouse": "زهيه رضا", "children": [{"name": "أسامة زهران", "gender": "m"}, {"name": "بندر زهران", "gender": "m", "spouse": "رابيه الخريجي", "children": [{"name": "أحمد زهران", "gender": "m"}, {"name": "عبدالعزيز زهران", "gender": "m"}]}, {"name": "خالد زهران", "gender": "m"}, {"name": "خلود زهران", "gender": "f", "spouse": "إبراهيم طالبي"}, {"name": "داليا زهران", "gender": "f"}, {"name": "مها زهران", "gender": "f", "spouse": "عدنان باخريبة"}, {"name": "هنادي زهران", "gender": "f", "spouse": "وليد تميرك"}]}, {"name": "أماني زهران", "gender": "f", "spouse": "طارق بافضل"}, {"name": "أمل زهران", "gender": "f", "spouse": "عبدالعزيز الثمالي"}, {"name": "إعتدال زهران", "gender": "f", "spouse": "صالح باسودان"}, {"name": "إعتماد زهران", "gender": "f", "spouse": "عبالرحمن أبوالحمايل"}, {"name": "زكية زهران", "gender": "f", "spouse": "جمال عبده"}, {"name": "عبدالمجيد زهران", "gender": "m", "spouse": "هبه المعمر", "children": [{"name": "ديمه زهران", "gender": "f"}, {"name": "سليمان زهران", "gender": "m"}, {"name": "عبدالعزيز زهران", "gender": "m"}, {"name": "عبدالله زهران", "gender": "m"}, {"name": "لولوه زهران", "gender": "f"}, {"name": "ناصر زهران", "gender": "m"}]}, {"name": "عناية زهران", "gender": "f", "spouse": "خالد باوزير"}, {"name": "محمد زهران", "gender": "m", "spouse": "ساميه حفني", "children": [{"name": "أحمد زهران", "gender": "m"}, {"name": "إيمان زهران", "gender": "f", "spouse": "رائد حنيف"}, {"name": "راكان زهران", "gender": "m", "spouse": "شيماء خضري", "children": [{"name": "محمد زهران", "gender": "m"}]}, {"name": "سليمان زهران", "gender": "m", "spouse": "شيماء مختار", "children": [{"name": "لمار زهران", "gender": "f"}]}, {"name": "هتان زهران", "gender": "m", "spouse": "آلاء باناصر", "children": [{"name": "ساميه زهران", "gender": "f"}]}]}, {"name": "منى زهران", "gender": "f", "spouse": "فتحي راجخان"}, {"name": "نور زهران", "gender": "f", "spouse": "عبدالجليل أبوالحمايل"}]}, {"name": "محمد زهران", "gender": "m", "children": [{"name": "جواهر زهران", "gender": "f"}, {"name": "حامد زهران", "gender": "m", "children": [{"name": "عاطف زهران", "gender": "m"}]}, {"name": "صالح زهران", "gender": "m", "spouse": "وداد سرتي", "children": [{"name": "باسم زهران", "gender": "m", "spouse": "أمل العامودي", "children": [{"name": "أسماء زهران", "gender": "f"}, {"name": "رغد زهران", "gender": "f"}, {"name": "صالح زهران", "gender": "m"}, {"name": "صهيب زهران", "gender": "m"}, {"name": "عبدالرحمن زهران", "gender": "m"}, {"name": "عبدالله زهران", "gender": "m"}]}, {"name": "بسمة زهران", "gender": "f", "spouse": "خالد صابر"}, {"name": "تهاني زهران", "gender": "f", "spouse": "عليوي الحمدان"}, {"name": "خالد زهران", "gender": "m", "spouse": "هيام سرتي", "children": [{"name": "إسراء زهران", "gender": "f"}, {"name": "البراء زهران", "gender": "m"}, {"name": "سراج زهران", "gender": "m", "children": [{"name": "خالد زهران", "gender": "m"}, {"name": "ماريه زهران", "gender": "f"}, {"name": "هايدي", "gender": "f"}, {"name": "سارة", "gender": "f"}]}, {"name": "نداء زهران", "gender": "f"}]}]}]}]}, {"name": "عثمان زهران", "gender": "m", "children": [{"name": "أحمد زهران", "gender": "m"}]}]}]}]};
 
-// --- Helpers ---
-const fontSizes = [26, 21, 17, 14, 12, 11, 10, 9, 9, 9];
-function getFontSize(depth) { return fontSizes[Math.min(depth, fontSizes.length - 1)]; }
-function getSpouseFontSize(depth) { return Math.round(getFontSize(depth) * 0.6); }
-
-function displayName(fullName) {
-  return fullName.replace(/\s*زهران$/, '');
+// ===== HELPERS =====
+function stripFamily(name) {
+  return name.replace(/ زهران$/, '');
 }
 
+// Count descendants
 function countDescendants(node) {
-  if (!node.children && !node._children) return 0;
-  const ch = node.children || node._children || [];
-  let count = ch.length;
-  ch.forEach(c => { count += countDescendants(c); });
-  return count;
+  if (!node.children || node.children.length === 0) return 1;
+  let c = 0;
+  for (const ch of node.children) c += countDescendants(ch);
+  return c;
 }
 
-function countDirectChildren(node) {
-  return (node.children || node._children || []).length;
+// Flatten tree with depth
+function flattenTree(node, depth = 0) {
+  const arr = [{ node, depth }];
+  if (node.children) {
+    for (const ch of node.children) {
+      arr.push(...flattenTree(ch, depth + 1));
+    }
+  }
+  return arr;
 }
 
-// Link styling by depth
-function linkColor(depth) {
-  const colors = ['#3E2723','#4E342E','#5D4037','#6D4C41','#795548','#8D6E63','#A1887F','#BCAAA4','#D7CCC8'];
+// Assign unique IDs and compute depths
+let nodeId = 0;
+function assignIds(node, depth = 0) {
+  node._id = nodeId++;
+  node._depth = depth;
+  node._leafCount = countDescendants(node);
+  node._isLeaf = !node.children || node.children.length === 0;
+  if (node.children) {
+    for (const ch of node.children) {
+      ch._parent = node;
+      assignIds(ch, depth + 1);
+    }
+  }
+}
+
+// Seeded random for consistent look
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+// ===== LAYOUT =====
+// We use the root "محمد زهران" as depth 0, "يوسف" as depth 1
+// Tree grows upward. Trunk at bottom center.
+// We use a radial fan layout spreading upward (180 degrees)
+
+assignIds(TREE_DATA);
+
+// For layout, we actually want يوسف as the visual root (trunk base)
+// and محمد above the roots. Let's restructure: يوسف is the main node.
+const yousefNode = TREE_DATA.children[0]; // يوسف زهران
+const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
+
+// Layout parameters
+const TRUNK_LENGTH = 180;
+const BASE_BRANCH_LENGTH = 160;
+const BRANCH_LENGTH_DECAY = 0.82;
+const MIN_BRANCH_LENGTH = 55;
+const MIN_TIP_SPACING = 65; // minimum pixels between leaf tips
+
+// We'll place يوسف at (0, 0) and the tree grows upward (negative Y).
+// محمد will be below يوسف (positive Y = below in screen, which is root area).
+
+// Angular layout: fan from -90 (left) to +90 (right) => upward half
+// We'll use -85 to +85 degrees to avoid completely horizontal branches
+
+const totalLeaves = countDescendants(yousefNode);
+const rng = seededRandom(42);
+
+// Compute the total radius (cumulative branch length) to each leaf
+function maxRadius(depth) {
+  let r = 0, len = BASE_BRANCH_LENGTH;
+  for (let d = 0; d < depth; d++) {
+    r += len;
+    len = Math.max(len * BRANCH_LENGTH_DECAY, MIN_BRANCH_LENGTH);
+  }
+  return r;
+}
+
+// Compute max depth
+function maxDepth(node) {
+  if (!node.children || node.children.length === 0) return 0;
+  return 1 + Math.max(...node.children.map(maxDepth));
+}
+const treeMaxDepth = maxDepth(yousefNode);
+const outerRadius = maxRadius(treeMaxDepth);
+
+// Compute minimum angle needed per leaf so tips are MIN_TIP_SPACING apart
+const minAnglePerLeaf = MIN_TIP_SPACING / outerRadius;
+
+// Compute needed total angle
+const totalLeafCount = countDescendants(yousefNode);
+const neededAngle = totalLeafCount * minAnglePerLeaf;
+const availableAngle = Math.max(neededAngle, 170 * Math.PI / 180);
+
+// Position computation using angular allocation with guaranteed spacing
+function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
+  node._x = cx;
+  node._y = cy;
+  node._angle = (angleStart + angleEnd) / 2;
+
+  if (!node.children || node.children.length === 0) return;
+
+  const nextLen = Math.max(branchLen * BRANCH_LENGTH_DECAY, MIN_BRANCH_LENGTH);
+  const totalWeight = node.children.reduce((s, ch) => s + ch._leafCount, 0);
+
+  // Ensure minimum angle per leaf descendant
+  const parentSpan = angleEnd - angleStart;
+
+  let currentAngle = angleStart;
+  for (const child of node.children) {
+    const share = child._leafCount / totalWeight;
+    const childSpan = share * parentSpan;
+    const childAngleStart = currentAngle;
+    const childAngleEnd = currentAngle + childSpan;
+    const midAngle = (childAngleStart + childAngleEnd) / 2;
+
+    const angleJitter = (rng() - 0.5) * 2 * (Math.PI / 180);
+    const lenJitter = 1 + (rng() - 0.5) * 0.12;
+
+    const effectiveAngle = midAngle + angleJitter;
+    const effectiveLen = branchLen * lenJitter;
+
+    const nx = cx + Math.sin(effectiveAngle) * effectiveLen;
+    const ny = cy - Math.cos(effectiveAngle) * effectiveLen;
+
+    layoutTree(child, nx, ny, childAngleStart, childAngleEnd, depth + 1, nextLen);
+    currentAngle = childAngleEnd;
+  }
+}
+
+// Place يوسف at origin, tree grows upward
+const halfAngle = availableAngle / 2;
+const startAngle = -halfAngle;
+const endAngle = halfAngle;
+layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
+
+// Place محمد below يوسف (roots)
+mohammedRoot._x = 0;
+mohammedRoot._y = TRUNK_LENGTH * 0.6;
+
+// ===== RENDERING =====
+const svgEl = document.getElementById('tree-svg');
+const container = document.getElementById('canvas-container');
+const tooltip = document.getElementById('tooltip');
+
+const W = container.clientWidth || window.innerWidth;
+const H = container.clientHeight || window.innerHeight;
+svgEl.setAttribute('width', W);
+svgEl.setAttribute('height', H);
+
+// Compute bounds
+const allNodes = flattenTree(yousefNode);
+allNodes.push({ node: mohammedRoot, depth: 0 });
+let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+for (const { node } of allNodes) {
+  minX = Math.min(minX, node._x);
+  maxX = Math.max(maxX, node._x);
+  minY = Math.min(minY, node._y);
+  maxY = Math.max(maxY, node._y);
+}
+// Add padding
+const pad = 80;
+minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+
+const dataW = maxX - minX;
+const dataH = maxY - minY;
+const initScale = Math.min(W / dataW, H / dataH) * 0.9;
+const initTx = W / 2 - (minX + maxX) / 2 * initScale;
+const initTy = H / 2 - (minY + maxY) / 2 * initScale;
+
+let transform = { x: initTx, y: initTy, k: initScale };
+
+// Create main group
+const NS = 'http://www.w3.org/2000/svg';
+
+function createEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    el.setAttribute(k, v);
+  }
+  return el;
+}
+
+// Defs for filters and gradients
+const defs = createEl('defs');
+svgEl.appendChild(defs);
+
+// Trunk glow filter
+const trunkGlow = createEl('filter', { id: 'trunkGlow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
+const feGauss = createEl('feGaussianBlur', { in: 'SourceGraphic', stdDeviation: '3', result: 'blur' });
+const feMerge = createEl('feMerge');
+const fm1 = createEl('feMergeNode', { in: 'blur' });
+const fm2 = createEl('feMergeNode', { in: 'SourceGraphic' });
+feMerge.appendChild(fm1);
+feMerge.appendChild(fm2);
+trunkGlow.appendChild(feGauss);
+trunkGlow.appendChild(feMerge);
+defs.appendChild(trunkGlow);
+
+// Leaf gradient
+const leafGrad = createEl('radialGradient', { id: 'leafGrad', cx: '40%', cy: '40%' });
+const s1 = createEl('stop', { offset: '0%', 'stop-color': '#81C784' });
+const s2 = createEl('stop', { offset: '100%', 'stop-color': '#2E7D32' });
+leafGrad.appendChild(s1);
+leafGrad.appendChild(s2);
+defs.appendChild(leafGrad);
+
+// Leaf shapes for variation
+function createLeafDef(id, color1, color2) {
+  const g = createEl('radialGradient', { id, cx: '40%', cy: '30%' });
+  g.appendChild(createEl('stop', { offset: '0%', 'stop-color': color1 }));
+  g.appendChild(createEl('stop', { offset: '100%', 'stop-color': color2 }));
+  defs.appendChild(g);
+}
+createLeafDef('leaf1', '#A5D6A7', '#388E3C');
+createLeafDef('leaf2', '#C8E6C9', '#2E7D32');
+createLeafDef('leaf3', '#81C784', '#1B5E20');
+createLeafDef('leaf4', '#B9F6CA', '#43A047');
+createLeafDef('leaf5', '#69F0AE', '#00695C');
+
+const leafGradients = ['leaf1', 'leaf2', 'leaf3', 'leaf4', 'leaf5'];
+
+// Main transform group
+const mainG = createEl('g');
+svgEl.appendChild(mainG);
+
+function applyTransform() {
+  mainG.setAttribute('transform', `translate(${transform.x},${transform.y}) scale(${transform.k})`);
+}
+applyTransform();
+
+// ===== DRAW BACKGROUND ELEMENTS =====
+// Ground/soil area
+const groundG = createEl('g');
+mainG.appendChild(groundG);
+
+// Ground with gradient
+const groundGradId = 'groundGrad';
+const gg = createEl('radialGradient', { id: groundGradId, cx: '50%', cy: '30%' });
+gg.appendChild(createEl('stop', { offset: '0%', 'stop-color': '#8D6E63', 'stop-opacity': '0.35' }));
+gg.appendChild(createEl('stop', { offset: '70%', 'stop-color': '#A1887F', 'stop-opacity': '0.15' }));
+gg.appendChild(createEl('stop', { offset: '100%', 'stop-color': '#BCAAA4', 'stop-opacity': '0.05' }));
+defs.appendChild(gg);
+
+const groundRect = createEl('ellipse', {
+  cx: 0, cy: TRUNK_LENGTH * 0.65 + 25,
+  rx: 250, ry: 35,
+  fill: `url(#${groundGradId})`
+});
+groundG.appendChild(groundRect);
+
+// Small grass tufts
+for (let i = 0; i < 12; i++) {
+  const gx = (rng() - 0.5) * 300;
+  const gy = TRUNK_LENGTH * 0.65 + 15 + rng() * 20;
+  const grassH = 5 + rng() * 8;
+  const grass = createEl('path', {
+    d: `M ${gx} ${gy} Q ${gx - 2} ${gy - grassH}, ${gx - 3 - rng()*3} ${gy - grassH - 3}
+        M ${gx} ${gy} Q ${gx + 1} ${gy - grassH}, ${gx + 2 + rng()*3} ${gy - grassH - 2}`,
+    stroke: '#66BB6A',
+    'stroke-width': '1',
+    fill: 'none',
+    opacity: String(0.3 + rng() * 0.3)
+  });
+  groundG.appendChild(grass);
+}
+
+// ===== DRAW BRANCHES =====
+const branchG = createEl('g');
+mainG.appendChild(branchG);
+
+// Branch thickness based on depth and descendant count
+function branchWidth(node) {
+  if (node._isLeaf) return 1.5;
+  const w = Math.max(1.5, Math.sqrt(node._leafCount) * 1.8);
+  return Math.min(w, 28);
+}
+
+// Branch color based on depth
+function branchColor(depth) {
+  const colors = ['#3E2723', '#4E342E', '#5D4037', '#6D4C41', '#795548', '#8D6E63', '#A1887F', '#BCAAA4', '#8D6E63', '#A1887F', '#BCAAA4'];
   return colors[Math.min(depth, colors.length - 1)];
 }
-function linkWidth(depth) {
-  const widths = [22, 16, 12, 8, 5, 3.5, 2.5, 2, 1.5];
-  return widths[Math.min(depth, widths.length - 1)];
-}
 
-// --- Setup ---
-const width = window.innerWidth;
-const height = window.innerHeight;
-const svg = d3.select('#tree-svg');
-const svgGroup = svg.append('g');
-const tooltip = d3.select('#tooltip');
+// Draw a curved branch between parent and child
+function drawBranch(parent, child) {
+  const x1 = parent._x, y1 = parent._y;
+  const x2 = child._x, y2 = child._y;
 
-// Zoom behavior
-const zoomBehavior = d3.zoom()
-  .scaleExtent([0.03, 4])
-  .on('zoom', (event) => {
-    svgGroup.attr('transform', event.transform);
-  });
-svg.call(zoomBehavior);
+  const dx = x2 - x1, dy = y2 - y1;
+  const dist = Math.sqrt(dx * dx + dy * dy);
 
-// D3 hierarchy
-const root = d3.hierarchy(treeData);
-root.x0 = 0;
-root.y0 = 0;
+  // Control points for organic bezier curve
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
 
-// Tree layout
-const treeLayout = d3.tree()
-  .nodeSize([55, 220])
-  .separation((a, b) => {
-    const aSpouse = a.data.spouse ? 1.35 : 1;
-    const bSpouse = b.data.spouse ? 1.35 : 1;
-    const base = a.parent === b.parent ? 1 : 1.2;
-    return base * Math.max(aSpouse, bSpouse);
-  });
+  // Perpendicular offset for curve
+  const perpX = -dy / dist;
+  const perpY = dx / dist;
+  const curveAmount = (rng() - 0.5) * dist * 0.2;
 
-let nodeIdCounter = 0;
+  const cx1 = x1 + dx * 0.3 + perpX * curveAmount * 0.5;
+  const cy1 = y1 + dy * 0.3 + perpY * curveAmount * 0.5;
+  const cx2 = x1 + dx * 0.7 + perpX * curveAmount;
+  const cy2 = y1 + dy * 0.7 + perpY * curveAmount;
 
-// Bezier diagonal for links
-function diagonal(d) {
-  const sx = d.source.x;
-  const sy = d.source.y;
-  const tx = d.target.x;
-  const ty = d.target.y;
-  const midY = (sy + ty) / 2;
-  return 'M' + sx + ',' + sy +
-         'C' + sx + ',' + midY +
-         ' ' + tx + ',' + midY +
-         ' ' + tx + ',' + ty;
-}
+  const w1 = branchWidth(parent);
+  const w2 = branchWidth(child);
 
-function update(source) {
-  treeLayout(root);
-  const nodes = root.descendants();
-  const links = root.links();
-
-  // Flip Y: tree grows upward (root at bottom)
-  nodes.forEach(d => { d.y = -d.y; });
-
-  // --- LINKS ---
-  const link = svgGroup.selectAll('path.link')
-    .data(links, d => {
-      if (!d.target.id) d.target.id = ++nodeIdCounter;
-      return d.target.id;
-    });
-
-  const linkEnter = link.enter()
-    .insert('path', 'g')
-    .attr('class', 'link')
-    .attr('d', () => {
-      const o = { x: source.x0, y: source.y0 };
-      return diagonal({ source: o, target: o });
-    })
-    .attr('stroke', d => linkColor(d.source.depth))
-    .attr('stroke-width', d => linkWidth(d.source.depth))
-    .attr('opacity', 0.8);
-
-  const linkUpdate = linkEnter.merge(link);
-  linkUpdate.transition().duration(500)
-    .attr('d', d => diagonal(d))
-    .attr('stroke', d => linkColor(d.source.depth))
-    .attr('stroke-width', d => linkWidth(d.source.depth));
-
-  link.exit().transition().duration(300)
-    .attr('d', () => {
-      const o = { x: source.x, y: source.y };
-      return diagonal({ source: o, target: o });
-    })
-    .remove();
-
-  // --- NODES ---
-  const node = svgGroup.selectAll('g.node')
-    .data(nodes, d => {
-      if (!d.id) d.id = ++nodeIdCounter;
-      return d.id;
-    });
-
-  const nodeEnter = node.enter()
-    .append('g')
-    .attr('class', 'node')
-    .attr('transform', 'translate(' + source.x0 + ',' + source.y0 + ')')
-    .on('click', (event, d) => {
-      event.stopPropagation();
-      if (d.children) {
-        d._children = d.children;
-        d.children = null;
-      } else if (d._children) {
-        d.children = d._children;
-        d._children = null;
-      }
-      update(d);
-    })
-    .on('mouseover', (event, d) => {
-      const desc = countDescendants(d);
-      const ch = countDirectChildren(d);
-      let html = '<strong>' + d.data.name + '</strong>';
-      if (d.data.spouse) html += '<br>الزوج/ة: ' + d.data.spouse;
-      html += '<br>الأبناء: ' + ch;
-      html += '<br>إجمالي الذرية: ' + desc;
-      tooltip.html(html)
-        .style('display', 'block')
-        .style('left', (event.clientX + 15) + 'px')
-        .style('top', (event.clientY - 10) + 'px');
-    })
-    .on('mousemove', (event) => {
-      tooltip.style('left', (event.clientX + 15) + 'px')
-        .style('top', (event.clientY - 10) + 'px');
-    })
-    .on('mouseout', () => {
-      tooltip.style('display', 'none');
-    });
-
-  // Node icon: leaf for leaf nodes, circle for branches
-  nodeEnter.each(function(d) {
-    const g = d3.select(this);
-    const isLeaf = !d.data.children || d.data.children.length === 0;
-    if (isLeaf) {
-      const color = d.data.gender === 'f' ? '#E91E63' : '#4CAF50';
-      const s = 8;
-      g.append('path')
-        .attr('class', 'node-circle leaf-icon')
-        .attr('d', 'M0,0 C' + (-s) + ',' + (-s*1.5) + ' ' + (-s*0.3) + ',' + (-s*2.2) + ' 0,' + (-s*2.5) + ' C' + (s*0.3) + ',' + (-s*2.2) + ' ' + s + ',' + (-s*1.5) + ' 0,0 Z')
-        .attr('fill', color)
-        .attr('opacity', 0.75)
-        .attr('transform', 'translate(0, 10)');
-    } else {
-      g.append('circle')
-        .attr('class', 'node-circle branch-circle')
-        .attr('r', Math.max(3, 7 - d.depth))
-        .attr('fill', d._children ? '#8D6E63' : '#5D4037')
-        .attr('stroke', '#3E2723')
-        .attr('stroke-width', 1);
-    }
+  const path = createEl('path', {
+    d: `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`,
+    stroke: branchColor(child._depth),
+    'stroke-width': (w1 + w2) / 2,
+    'stroke-linecap': 'round',
+    fill: 'none',
+    opacity: '0.9'
   });
 
-  // Person name
-  nodeEnter.append('text')
-    .attr('class', 'node-text')
-    .attr('dy', d => {
-      const isLeaf = !d.data.children || d.data.children.length === 0;
-      return isLeaf ? '-14' : (d.data.spouse ? '-12' : '-10');
-    })
-    .attr('text-anchor', 'middle')
-    .attr('font-size', d => getFontSize(d.depth) + 'px')
-    .text(d => displayName(d.data.name));
-
-  // Spouse name
-  nodeEnter.filter(d => d.data.spouse)
-    .append('text')
-    .attr('class', 'spouse-text')
-    .attr('dy', d => {
-      const isLeaf = !d.data.children || d.data.children.length === 0;
-      return isLeaf ? '28' : '18';
-    })
-    .attr('text-anchor', 'middle')
-    .attr('font-size', d => getSpouseFontSize(d.depth) + 'px')
-    .text(d => d.data.spouse);
-
-  // Transition existing + new nodes
-  const nodeUpdate = nodeEnter.merge(node);
-  nodeUpdate.transition().duration(500)
-    .attr('transform', d => 'translate(' + d.x + ',' + d.y + ')');
-
-  // Update circle color for collapsed state
-  nodeUpdate.select('.branch-circle')
-    .attr('fill', d => d._children ? '#8D6E63' : '#5D4037');
-
-  // Exit
-  node.exit().transition().duration(300)
-    .attr('transform', 'translate(' + source.x + ',' + source.y + ')')
-    .remove()
-    .select('text')
-    .style('fill-opacity', 0);
-
-  // Store positions
-  nodes.forEach(d => {
-    d.x0 = d.x;
-    d.y0 = d.y;
-  });
-}
-
-// Initial render - fully expanded
-update(root);
-setTimeout(() => fitToView(), 200);
-
-// --- Controls ---
-function zoomIn() {
-  svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.4);
-}
-function zoomOut() {
-  svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.7);
-}
-function fitToView() {
-  const nodes = root.descendants();
-  if (nodes.length === 0) return;
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  nodes.forEach(d => {
-    if (d.x < minX) minX = d.x;
-    if (d.x > maxX) maxX = d.x;
-    if (d.y < minY) minY = d.y;
-    if (d.y > maxY) maxY = d.y;
-  });
-  const pad = 100;
-  const treeW = (maxX - minX) + pad * 2;
-  const treeH = (maxY - minY) + pad * 2;
-  const scale = Math.min(width / treeW, height / treeH, 2);
-  const cx = (minX + maxX) / 2;
-  const cy = (minY + maxY) / 2;
-  const t = d3.zoomIdentity
-    .translate(width / 2 - cx * scale, height / 2 - cy * scale)
-    .scale(scale);
-  svg.transition().duration(700).call(zoomBehavior.transform, t);
-}
-
-function expandAll() {
-  function expand(d) {
-    if (d._children) {
-      d.children = d._children;
-      d._children = null;
-    }
-    if (d.children) d.children.forEach(expand);
+  if (child._depth <= 2) {
+    path.setAttribute('filter', 'url(#trunkGlow)');
   }
-  expand(root);
-  update(root);
-  setTimeout(() => fitToView(), 600);
+
+  branchG.appendChild(path);
 }
 
-function collapseToLevel(level) {
-  function process(d, depth) {
-    if (d._children) {
-      d.children = d._children;
-      d._children = null;
-    }
-    if (d.children) {
-      if (depth >= level) {
-        d._children = d.children;
-        d.children = null;
-      } else {
-        d.children.forEach(c => process(c, depth + 1));
-      }
+// Draw trunk (from root area to يوسف) with filled shape for natural look
+const trunkY0 = TRUNK_LENGTH * 0.65;
+const trunkTopY = -5;
+// Left and right edges of trunk (wider at base, narrower at top)
+const trunkShape = createEl('path', {
+  d: `M -16 ${trunkY0} C -14 ${trunkY0 * 0.5}, -10 ${trunkY0 * 0.2}, -6 ${trunkTopY}
+      L 6 ${trunkTopY} C 10 ${trunkY0 * 0.2}, 14 ${trunkY0 * 0.5}, 16 ${trunkY0} Z`,
+  fill: '#4E342E',
+  filter: 'url(#trunkGlow)',
+  opacity: '0.95',
+  stroke: '#3E2723',
+  'stroke-width': '1'
+});
+branchG.appendChild(trunkShape);
+
+// Bark texture lines
+for (let i = 0; i < 7; i++) {
+  const ox = (rng() - 0.5) * 18;
+  const w = 0.5 + rng() * 1.2;
+  const startY = trunkY0 * (0.3 + rng() * 0.6);
+  const endY = startY - (20 + rng() * 40);
+  const barkLine = createEl('path', {
+    d: `M ${ox} ${startY} C ${ox + (rng()-0.5)*6} ${(startY+endY)/2}, ${ox + (rng()-0.5)*4} ${endY + 10}, ${ox + (rng()-0.5)*3} ${endY}`,
+    stroke: rng() > 0.5 ? '#2E1B0E' : '#6D4C41',
+    'stroke-width': w,
+    'stroke-linecap': 'round',
+    fill: 'none',
+    opacity: String(0.15 + rng() * 0.15)
+  });
+  branchG.appendChild(barkLine);
+}
+
+// Knots on trunk
+for (let i = 0; i < 2; i++) {
+  const kx = (rng() - 0.5) * 10;
+  const ky = trunkY0 * (0.2 + rng() * 0.4);
+  const knot = createEl('ellipse', {
+    cx: kx, cy: ky,
+    rx: 3 + rng() * 2, ry: 2 + rng() * 1.5,
+    fill: '#3E2723',
+    opacity: '0.3'
+  });
+  branchG.appendChild(knot);
+}
+
+// Draw all branches recursively
+function drawBranches(node) {
+  if (node.children) {
+    for (const child of node.children) {
+      drawBranch(node, child);
+      drawBranches(child);
     }
   }
-  process(root, 0);
-  update(root);
-  setTimeout(() => fitToView(), 600);
+}
+drawBranches(yousefNode);
+
+// ===== DRAW LEAVES =====
+const leafG = createEl('g');
+mainG.appendChild(leafG);
+
+function drawLeaf(x, y, scale, rotation) {
+  const gradId = leafGradients[Math.floor(rng() * leafGradients.length)];
+  // More realistic leaf shape with pointed tip and wider body
+  const leafPaths = [
+    'M 0,-9 C 3.5,-7 5.5,-2 4,2 C 3,5 1.5,8 0,10 C -1.5,8 -3,5 -4,2 C -5.5,-2 -3.5,-7 0,-9 Z',
+    'M 0,-8 C 4,-5 5,0 3,5 C 1.5,8 0,9 0,9 C 0,9 -1.5,8 -3,5 C -5,0 -4,-5 0,-8 Z',
+    'M 0,-7 C 3,-5 4.5,-1 3,4 C 2,7 0,9 0,9 C 0,9 -2,7 -3,4 C -4.5,-1 -3,-5 0,-7 Z'
+  ];
+  const leafD = leafPaths[Math.floor(rng() * leafPaths.length)];
+  const leaf = createEl('path', {
+    d: leafD,
+    fill: `url(#${gradId})`,
+    transform: `translate(${x},${y}) rotate(${rotation}) scale(${scale})`,
+    opacity: String(0.65 + rng() * 0.35),
+    stroke: '#2E7D32',
+    'stroke-width': '0.3'
+  });
+  leafG.appendChild(leaf);
 }
 
-// --- Search ---
-const searchInput = document.getElementById('search-input');
-let searchTimeout;
-searchInput.addEventListener('input', function() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => {
-    const query = this.value.trim();
-    // Clear highlights
-    svgGroup.selectAll('.search-highlight-bg').remove();
-    svgGroup.selectAll('.node-text').classed('search-highlight', false);
-    if (!query) return;
-
-    // Expand all to find matches
-    function expandToFind(d) {
-      if (d._children) {
-        d.children = d._children;
-        d._children = null;
-      }
-      if (d.children) d.children.forEach(expandToFind);
+// Draw leaves at leaf nodes and scattered near tips
+function drawLeaves(node) {
+  if (node._isLeaf) {
+    // Draw 3-6 leaves at this position for a lush look
+    const numLeaves = 2 + Math.floor(rng() * 2);
+    for (let i = 0; i < numLeaves; i++) {
+      const ox = (rng() - 0.5) * 20;
+      const oy = (rng() - 0.5) * 20 - 8;
+      const s = 0.7 + rng() * 0.5;
+      const rot = rng() * 360;
+      drawLeaf(node._x + ox, node._y + oy, s, rot);
     }
-    expandToFind(root);
-    update(root);
+  } else if (node._depth >= 4) {
+    // Add a couple leaves to branch nodes too for density
+    const numLeaves = Math.floor(rng() * 2);
+    for (let i = 0; i < numLeaves; i++) {
+      const ox = (rng() - 0.5) * 15;
+      const oy = (rng() - 0.5) * 15;
+      drawLeaf(node._x + ox, node._y + oy, 0.4 + rng() * 0.4, rng() * 360);
+    }
+  }
+  if (node.children) {
+    for (const ch of node.children) drawLeaves(ch);
+  }
+}
+drawLeaves(yousefNode);
 
-    setTimeout(() => {
-      const allNodes = root.descendants();
-      const matches = allNodes.filter(d =>
-        d.data.name.includes(query) ||
-        (d.data.spouse && d.data.spouse.includes(query))
-      );
-      if (matches.length > 0) {
-        svgGroup.selectAll('g.node').each(function(d) {
-          if (matches.includes(d)) {
-            const g = d3.select(this);
-            g.insert('rect', ':first-child')
-              .attr('class', 'search-highlight-bg')
-              .attr('x', -65).attr('y', -25)
-              .attr('width', 130).attr('height', 45)
-              .attr('rx', 12);
-            g.select('.node-text').classed('search-highlight', true);
-          }
-        });
-        // Pan to first match
-        const m = matches[0];
-        const t = d3.zoomIdentity
-          .translate(width / 2 - m.x, height / 2 - m.y)
-          .scale(1);
-        svg.transition().duration(500).call(zoomBehavior.transform, t);
-      }
-    }, 600);
-  }, 400);
+// Extra scattered leaves in the canopy for fullness
+for (const { node } of allNodes) {
+  if (node._depth >= 3 && rng() > 0.4) {
+    const ox = (rng() - 0.5) * 22;
+    const oy = (rng() - 0.5) * 22;
+    drawLeaf(node._x + ox, node._y + oy, 0.4 + rng() * 0.5, rng() * 360);
+  }
+}
+
+// ===== DRAW NAMES =====
+const labelG = createEl('g');
+mainG.appendChild(labelG);
+
+// Root label (محمد) - at the base of the trunk
+function addRootLabel() {
+  // Decorative plate behind the name
+  const plateY = TRUNK_LENGTH * 0.65 + 22;
+  const plate = createEl('rect', {
+    x: -55, y: plateY - 14,
+    width: 110, height: 32,
+    rx: 8, ry: 8,
+    fill: '#3E2723',
+    opacity: '0.7'
+  });
+  labelG.appendChild(plate);
+
+  const rootText = createEl('text', {
+    x: 0, y: plateY,
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle',
+    fill: '#FFF8E1',
+    'font-size': '14',
+    'font-weight': '700',
+    'font-family': 'Amiri, serif'
+  });
+  rootText.textContent = stripFamily(mohammedRoot.name) + ' زهران';
+  labelG.appendChild(rootText);
+
+  const rootsLabel = createEl('text', {
+    x: 0, y: plateY + 14,
+    'text-anchor': 'middle',
+    fill: '#BCAAA4',
+    'font-size': '9',
+    'font-family': 'Amiri, serif',
+    opacity: '0.8'
+  });
+  rootsLabel.textContent = 'الجد الأكبر';
+  labelG.appendChild(rootsLabel);
+}
+addRootLabel();
+
+// Font size by depth
+function fontSize(depth) {
+  const sizes = [32, 26, 22, 18, 16, 14, 13, 12, 11, 10.5, 10];
+  return sizes[Math.min(depth, sizes.length - 1)];
+}
+
+function textColor(depth, isLeaf) {
+  if (depth <= 1) return '#FFFFFF';
+  return '#1B0F00';
+}
+
+function textStroke(depth) {
+  if (depth <= 1) return '#3E2723';
+  return '#FFFFFF';
+}
+
+// Draw names along branches or at leaf positions
+function drawNames(node) {
+  const name = stripFamily(node.name);
+  const fs = fontSize(node._depth);
+  const color = textColor(node._depth, node._isLeaf);
+
+  if (node._depth === 0 && node === yousefNode) {
+    // يوسف on the trunk
+    const txt = createEl('text', {
+      x: 0, y: -5,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'middle',
+      fill: '#FFF8E1',
+      'font-size': '20',
+      'font-weight': '700',
+      'font-family': 'Amiri, serif',
+      stroke: '#3E2723',
+      'stroke-width': '0.5',
+      'paint-order': 'stroke'
+    });
+    txt.textContent = name;
+    labelG.appendChild(txt);
+  } else if (node._depth <= 2 && !node._isLeaf) {
+    // Major branch names - rotated along branch direction
+    const parent = node._parent;
+    if (parent) {
+      const dx = node._x - parent._x;
+      const dy = node._y - parent._y;
+      let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      // Keep text readable
+      if (angle > 90) angle -= 180;
+      if (angle < -90) angle += 180;
+
+      const midX = (node._x + parent._x) / 2;
+      const midY = (node._y + parent._y) / 2;
+
+      const txt = createEl('text', {
+        x: 0, y: 0,
+        'text-anchor': 'middle',
+        'dominant-baseline': 'middle',
+        fill: color,
+        'font-size': String(fs),
+        'font-weight': '700',
+        'font-family': 'Amiri, serif',
+        transform: `translate(${midX},${midY}) rotate(${angle})`,
+        stroke: textStroke(node._depth),
+        'stroke-width': node._depth <= 1 ? '0.5' : '3',
+        'paint-order': 'stroke'
+      });
+      txt.textContent = name;
+      labelG.appendChild(txt);
+    }
+  } else {
+    // All other names at their position
+    const txt = createEl('text', {
+      x: node._x,
+      y: node._isLeaf ? node._y - 12 : node._y + 3,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'middle',
+      fill: color,
+      'font-size': String(fs),
+      'font-weight': node._isLeaf ? '400' : '600',
+      'font-family': 'Amiri, serif',
+      'pointer-events': 'all',
+      cursor: 'pointer'
+    });
+
+    // Add white background stroke for readability on ALL non-trunk nodes
+    if (node._depth >= 2) {
+      txt.setAttribute('stroke', '#FFFFFF');
+      txt.setAttribute('stroke-width', '3.5');
+      txt.setAttribute('paint-order', 'stroke');
+    }
+
+    txt.textContent = name;
+    txt.dataset.nodeId = node._id;
+    labelG.appendChild(txt);
+
+    // Draw spouse name below
+    if (node.spouse) {
+      const spFs = Math.max(7, fs * 0.55);
+      const spY = node._isLeaf ? node._y - 12 + spFs + 3 : node._y + 3 + spFs + 2;
+      const spTxt = createEl('text', {
+        x: node._x,
+        y: spY,
+        'text-anchor': 'middle',
+        'dominant-baseline': 'middle',
+        fill: '#5D4037',
+        'font-size': String(spFs),
+        'font-weight': '400',
+        'font-family': 'Amiri, serif',
+        'pointer-events': 'none',
+        stroke: '#FFFFFF',
+        'stroke-width': '2.5',
+        'paint-order': 'stroke',
+        opacity: '0.85'
+      });
+      spTxt.textContent = '⚭ ' + node.spouse;
+      labelG.appendChild(spTxt);
+    }
+  }
+
+  // Draw name for depth 1-2 at their position too (in addition to along branch)
+  if (node._depth >= 1 && node._depth <= 2 && !node._isLeaf) {
+    const txt2 = createEl('text', {
+      x: node._x,
+      y: node._y + (fs + 2),
+      'text-anchor': 'middle',
+      'dominant-baseline': 'middle',
+      fill: color,
+      'font-size': String(fs * 0.7),
+      'font-weight': '400',
+      'font-family': 'Amiri, serif',
+      opacity: '0.7',
+      stroke: '#3E2723',
+      'stroke-width': '0.2',
+      'paint-order': 'stroke'
+    });
+    txt2.textContent = name;
+    labelG.appendChild(txt2);
+
+    // Spouse for major branches
+    if (node.spouse) {
+      const spFs2 = Math.max(7, fs * 0.45);
+      const sp2 = createEl('text', {
+        x: node._x,
+        y: node._y + (fs + 2) + spFs2 + 3,
+        'text-anchor': 'middle',
+        'dominant-baseline': 'middle',
+        fill: '#5D4037',
+        'font-size': String(spFs2),
+        'font-family': 'Amiri, serif',
+        opacity: '0.8',
+        stroke: '#FFFFFF',
+        'stroke-width': '2',
+        'paint-order': 'stroke'
+      });
+      sp2.textContent = '⚭ ' + node.spouse;
+      labelG.appendChild(sp2);
+    }
+  }
+
+  if (node.children) {
+    for (const ch of node.children) drawNames(ch);
+  }
+}
+drawNames(yousefNode);
+
+// ===== DRAW SMALL CIRCLES AT NODES =====
+const dotG = createEl('g');
+mainG.appendChild(dotG);
+
+function drawDots(node) {
+  if (node._depth >= 2) {
+    const r = node._isLeaf ? 2 : Math.min(3, 1.5 + Math.sqrt(node._leafCount) * 0.3);
+    const dot = createEl('circle', {
+      cx: node._x, cy: node._y,
+      r: r,
+      fill: node._isLeaf ? '#4CAF50' : branchColor(node._depth),
+      stroke: node._isLeaf ? '#2E7D32' : '#3E2723',
+      'stroke-width': '0.5',
+      opacity: '0.8',
+      'pointer-events': 'all',
+      cursor: 'pointer'
+    });
+    dot.dataset.nodeId = node._id;
+    dotG.appendChild(dot);
+  }
+  if (node.children) {
+    for (const ch of node.children) drawDots(ch);
+  }
+}
+drawDots(yousefNode);
+
+// ===== TOOLTIP =====
+// Build node map
+const nodeMap = {};
+function buildMap(node) {
+  nodeMap[node._id] = node;
+  if (node.children) for (const ch of node.children) buildMap(ch);
+}
+buildMap(TREE_DATA);
+
+svgEl.addEventListener('mouseover', (e) => {
+  const id = e.target.dataset?.nodeId;
+  if (id !== undefined) {
+    const node = nodeMap[id];
+    if (!node) return;
+    let html = `<strong>${node.name}</strong>`;
+    if (node.spouse) html += `<br>الزوج/ة: ${node.spouse}`;
+    if (node.children) html += `<br>عدد الأبناء: ${node.children.length}`;
+    if (node._parent) html += `<br>الأب: ${node._parent.name}`;
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+  }
 });
 
+svgEl.addEventListener('mousemove', (e) => {
+  if (tooltip.style.display === 'block') {
+    tooltip.style.left = (e.clientX + 15) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+  }
+});
+
+svgEl.addEventListener('mouseout', (e) => {
+  if (e.target.dataset?.nodeId !== undefined) {
+    tooltip.style.display = 'none';
+  }
+});
+
+// ===== PAN & ZOOM =====
+let isPanning = false;
+let startX, startY;
+
+container.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  isPanning = true;
+  startX = e.clientX - transform.x;
+  startY = e.clientY - transform.y;
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  transform.x = e.clientX - startX;
+  transform.y = e.clientY - startY;
+  applyTransform();
+});
+
+window.addEventListener('mouseup', () => { isPanning = false; });
+
+container.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = -e.deltaY * 0.001;
+  const newK = Math.max(0.1, Math.min(10, transform.k * (1 + delta)));
+  const rect = container.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  // Zoom toward mouse
+  const factor = newK / transform.k;
+  transform.x = mx - (mx - transform.x) * factor;
+  transform.y = my - (my - transform.y) * factor;
+  transform.k = newK;
+  applyTransform();
+}, { passive: false });
+
+// Touch support
+let lastTouchDist = null;
+let lastTouchCenter = null;
+
+container.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    isPanning = true;
+    startX = e.touches[0].clientX - transform.x;
+    startY = e.touches[0].clientY - transform.y;
+  } else if (e.touches.length === 2) {
+    isPanning = false;
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+    lastTouchCenter = {
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+    };
+  }
+  e.preventDefault();
+}, { passive: false });
+
+container.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 1 && isPanning) {
+    transform.x = e.touches[0].clientX - startX;
+    transform.y = e.touches[0].clientY - startY;
+    applyTransform();
+  } else if (e.touches.length === 2 && lastTouchDist) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const factor = dist / lastTouchDist;
+    const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+    const newK = Math.max(0.1, Math.min(10, transform.k * factor));
+    const kFactor = newK / transform.k;
+    transform.x = cx - (cx - transform.x) * kFactor;
+    transform.y = cy - (cy - transform.y) * kFactor;
+    transform.k = newK;
+
+    // Also pan
+    if (lastTouchCenter) {
+      transform.x += cx - lastTouchCenter.x;
+      transform.y += cy - lastTouchCenter.y;
+    }
+
+    lastTouchDist = dist;
+    lastTouchCenter = { x: cx, y: cy };
+    applyTransform();
+  }
+  e.preventDefault();
+}, { passive: false });
+
+container.addEventListener('touchend', () => {
+  isPanning = false;
+  lastTouchDist = null;
+  lastTouchCenter = null;
+});
+
+// Control buttons
+document.getElementById('zoom-in').addEventListener('click', () => {
+  const cx = W / 2, cy = H / 2;
+  const factor = 1.3;
+  transform.x = cx - (cx - transform.x) * factor;
+  transform.y = cy - (cy - transform.y) * factor;
+  transform.k *= factor;
+  applyTransform();
+});
+
+document.getElementById('zoom-out').addEventListener('click', () => {
+  const cx = W / 2, cy = H / 2;
+  const factor = 1 / 1.3;
+  transform.x = cx - (cx - transform.x) * factor;
+  transform.y = cy - (cy - transform.y) * factor;
+  transform.k *= factor;
+  applyTransform();
+});
+
+document.getElementById('zoom-fit').addEventListener('click', () => {
+  transform = { x: initTx, y: initTy, k: initScale };
+  applyTransform();
+});
+
+// ===== ROOTS (decorative) =====
+const rootG = createEl('g');
+// Insert roots behind branches
+mainG.insertBefore(rootG, branchG);
+
+const rootBaseY = TRUNK_LENGTH * 0.65;
+// Main thick roots
+const rootConfigs = [
+  { startX: -8, angle: -40, len: 80, w: 7 },
+  { startX: -4, angle: -65, len: 60, w: 5 },
+  { startX: 0, angle: -90, len: 45, w: 4 },
+  { startX: 4, angle: 65, len: 55, w: 5 },
+  { startX: 8, angle: 35, len: 75, w: 6 },
+  { startX: 10, angle: 55, len: 50, w: 4 },
+  { startX: -10, angle: -55, len: 50, w: 4 },
+];
+
+for (const rc of rootConfigs) {
+  const radA = (90 + rc.angle) * Math.PI / 180;
+  const ex = rc.startX + Math.cos(radA) * rc.len;
+  const ey = rootBaseY + Math.sin(radA) * rc.len * 0.6;
+  const cpx = rc.startX + Math.cos(radA) * rc.len * 0.5 + (rng() - 0.5) * 15;
+  const cpy = rootBaseY + Math.sin(radA) * rc.len * 0.3 + rng() * 10;
+
+  const root = createEl('path', {
+    d: `M ${rc.startX} ${rootBaseY} Q ${cpx} ${cpy}, ${ex} ${ey}`,
+    stroke: '#5D4037',
+    'stroke-width': String(rc.w + rng() * 2),
+    'stroke-linecap': 'round',
+    fill: 'none',
+    opacity: String(0.35 + rng() * 0.15)
+  });
+  rootG.appendChild(root);
+
+  // Sub-roots branching off
+  if (rng() > 0.4) {
+    const subX = (rc.startX + ex) / 2 + (rng() - 0.5) * 10;
+    const subY = (rootBaseY + ey) / 2;
+    const subEx = subX + (rng() - 0.5) * 30;
+    const subEy = subY + 10 + rng() * 20;
+    const subRoot = createEl('path', {
+      d: `M ${subX} ${subY} Q ${(subX + subEx)/2} ${subY + 5}, ${subEx} ${subEy}`,
+      stroke: '#6D4C41',
+      'stroke-width': String(1 + rng() * 2),
+      'stroke-linecap': 'round',
+      fill: 'none',
+      opacity: String(0.25 + rng() * 0.15)
+    });
+    rootG.appendChild(subRoot);
+  }
+}
+
+// Resize handler
 window.addEventListener('resize', () => {
-  fitToView();
+  const nw = container.clientWidth;
+  const nh = container.clientHeight;
+  svgEl.setAttribute('width', nw);
+  svgEl.setAttribute('height', nh);
 });
 </script>
 </body>
