@@ -335,6 +335,424 @@ const startAngle = -halfAngle;
 const endAngle = halfAngle;
 layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
 
+// === POST-LAYOUT: Redirect سراج/آمنه branch to point LEFT (above زينب) ===
+(function redirectSirajBranch() {
+  // Find the parent of the specific سراج that has spouse "جواهر جوخدار..."
+  function findSirajParent(node) {
+    if (node.children) {
+      for (const ch of node.children) {
+        if (ch.name && ch.name.includes('سراج') && ch.spouse && ch.spouse.includes('جواهر')) {
+          return node; // this is حامد (the direct parent of سراج)
+        }
+        const r = findSirajParent(ch);
+        if (r) return r;
+      }
+    }
+    return null;
+  }
+
+  function findParentNode(root, target) {
+    if (!root.children) return null;
+    for (const ch of root.children) {
+      if (ch === target) return root;
+      const r = findParentNode(ch, target);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function rotateSubtree(node, pivotX, pivotY, delta) {
+    const cos = Math.cos(delta), sin = Math.sin(delta);
+    function rot(n) {
+      const dx = n._x - pivotX, dy = n._y - pivotY;
+      n._x = pivotX + dx * cos - dy * sin;
+      n._y = pivotY + dx * sin + dy * cos;
+      if (n.children) n.children.forEach(rot);
+    }
+    rot(node);
+  }
+
+  const hamedNode = findSirajParent(yousefNode);
+  if (!hamedNode) return;
+
+  const parentNode = findParentNode(yousefNode, hamedNode);
+  if (!parentNode) return;
+
+  // Current angle from parentNode (محمد) to hamedNode (حامد), in layout convention (0=up)
+  const dx = hamedNode._x - parentNode._x;
+  const dy = hamedNode._y - parentNode._y;
+  const currentAngle = Math.atan2(dx, -dy);
+
+  // Target: pointing LEFT on screen = -π/2 in layout angle convention
+  const targetAngle = -Math.PI / 2;
+
+  rotateSubtree(hamedNode, parentNode._x, parentNode._y, targetAngle - currentAngle);
+})();
+
+// === POST-LAYOUT: Redirect سليمان branch (child of صالح) to point LEFT ===
+(function redirectSuleimanBranch() {
+  function findNodeBySpouse(node, spouseSubstr) {
+    if (node.spouse && node.spouse.includes(spouseSubstr)) return node;
+    if (node.children) {
+      for (const ch of node.children) {
+        const r = findNodeBySpouse(ch, spouseSubstr);
+        if (r) return r;
+      }
+    }
+    return null;
+  }
+
+  function findParentNode(root, target) {
+    if (!root.children) return null;
+    for (const ch of root.children) {
+      if (ch === target) return root;
+      const r = findParentNode(ch, target);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function rotateSubtree(node, pivotX, pivotY, delta) {
+    const cos = Math.cos(delta), sin = Math.sin(delta);
+    function rot(n) {
+      const dx = n._x - pivotX, dy = n._y - pivotY;
+      n._x = pivotX + dx * cos - dy * sin;
+      n._y = pivotY + dx * sin + dy * cos;
+      if (n.children) n.children.forEach(rot);
+    }
+    rot(node);
+  }
+
+  // سليمان زهران (child of صالح) has spouse "جميلة بنتن"
+  const suleimanNode = findNodeBySpouse(yousefNode, 'جميلة بنتن');
+  if (!suleimanNode) return;
+
+  const parentNode = findParentNode(yousefNode, suleimanNode);
+  if (!parentNode) return;
+
+  const dx = suleimanNode._x - parentNode._x;
+  const dy = suleimanNode._y - parentNode._y;
+  const currentAngle = Math.atan2(dx, -dy);
+
+  // Target: lower-left direction = -3π/4 (225°)
+  const targetAngle = -Math.PI * 3 / 4;
+
+  rotateSubtree(suleimanNode, parentNode._x, parentNode._y, targetAngle - currentAngle);
+})();
+
+// === POST-LAYOUT: Redirect محمد (ساميه حفني) branch to point LEFT ===
+(function redirectMohammedSamiaBranch() {
+  function findNodeBySpouse(node, spouseSubstr) {
+    if (node.spouse && node.spouse.includes(spouseSubstr)) return node;
+    if (node.children) {
+      for (const ch of node.children) {
+        const r = findNodeBySpouse(ch, spouseSubstr);
+        if (r) return r;
+      }
+    }
+    return null;
+  }
+
+  function findParentNode(root, target) {
+    if (!root.children) return null;
+    for (const ch of root.children) {
+      if (ch === target) return root;
+      const r = findParentNode(ch, target);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function rotateSubtree(node, pivotX, pivotY, delta) {
+    const cos = Math.cos(delta), sin = Math.sin(delta);
+    function rot(n) {
+      const dx = n._x - pivotX, dy = n._y - pivotY;
+      n._x = pivotX + dx * cos - dy * sin;
+      n._y = pivotY + dx * sin + dy * cos;
+      if (n.children) n.children.forEach(rot);
+    }
+    rot(node);
+  }
+
+  const mohammedNode = findNodeBySpouse(yousefNode, 'ساميه حفني');
+  if (!mohammedNode) return;
+
+  const parentNode = findParentNode(yousefNode, mohammedNode);
+  if (!parentNode) return;
+
+  const dx = mohammedNode._x - parentNode._x;
+  const dy = mohammedNode._y - parentNode._y;
+  const currentAngle = Math.atan2(dx, -dy);
+
+  // Target: pointing LEFT on screen = -π/2
+  const targetAngle = -Math.PI / 2;
+
+  rotateSubtree(mohammedNode, parentNode._x, parentNode._y, targetAngle - currentAngle);
+})();
+
+// === POST-LAYOUT: Redirect محمد (child of صالح, child of محمد, child of يوسف) to point LEFT ===
+(function redirectMohammedSalehBranch() {
+  // Identified by having a child صالح with spouse "وداد سرتي"
+  function findParentOfChildWithSpouse(node, childNameSubstr, spouseSubstr) {
+    if (node.children) {
+      for (const ch of node.children) {
+        if (ch.name && ch.name.includes(childNameSubstr) && ch.spouse && ch.spouse.includes(spouseSubstr)) {
+          return node;
+        }
+        const r = findParentOfChildWithSpouse(ch, childNameSubstr, spouseSubstr);
+        if (r) return r;
+      }
+    }
+    return null;
+  }
+
+  function findParentNode(root, target) {
+    if (!root.children) return null;
+    for (const ch of root.children) {
+      if (ch === target) return root;
+      const r = findParentNode(ch, target);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function rotateSubtree(node, pivotX, pivotY, delta) {
+    const cos = Math.cos(delta), sin = Math.sin(delta);
+    function rot(n) {
+      const dx = n._x - pivotX, dy = n._y - pivotY;
+      n._x = pivotX + dx * cos - dy * sin;
+      n._y = pivotY + dx * sin + dy * cos;
+      if (n.children) n.children.forEach(rot);
+    }
+    rot(node);
+  }
+
+  const mohammedNode = findParentOfChildWithSpouse(yousefNode, 'صالح', 'وداد سرتي');
+  if (!mohammedNode) return;
+
+  const parentNode = findParentNode(yousefNode, mohammedNode);
+  if (!parentNode) return;
+
+  const dx = mohammedNode._x - parentNode._x;
+  const dy = mohammedNode._y - parentNode._y;
+  const currentAngle = Math.atan2(dx, -dy);
+
+  // Target: -7π/18 (~-70°) — just a tiny bit below -π/3 (-60°)
+  const targetAngle = -Math.PI * 7 / 18;
+
+  rotateSubtree(mohammedNode, parentNode._x, parentNode._y, targetAngle - currentAngle);
+})();
+
+// === POST-LAYOUT: Reposition أحمد (leaf, first child of يوسف) to upper-left ===
+(function repositionAhmed() {
+  const ahmedNode = yousefNode.children && yousefNode.children.find(
+    ch => ch.name && ch.name.includes('أحمد') && (!ch.children || ch.children.length === 0)
+  );
+  if (!ahmedNode) return;
+
+  // Upper-left direction = -π/4 (-45°) from north
+  const angle = -Math.PI / 4;
+  const len = MIN_BRANCH_LENGTH + LEAF_SPREAD_RADIUS;
+  ahmedNode._x = yousefNode._x + Math.sin(angle) * len;
+  ahmedNode._y = yousefNode._y - Math.cos(angle) * len;
+})();
+
+// === POST-LAYOUT: Flip يوسف (child of عبدالله, child of يوسف) to point opposite direction ===
+(function redirectYousefAbdullahBranch() {
+  // Identified by having a child محمد whose children include أنيسة
+  function findTargetYousef(node) {
+    if (node.children) {
+      for (const ch of node.children) {
+        if (ch.name && ch.name.includes('يوسف') && ch.children) {
+          const hasMohammedWithAneesa = ch.children.some(c =>
+            c.name && c.name.includes('محمد') && c.children &&
+            c.children.some(gc => gc.name && gc.name.includes('أنيسة'))
+          );
+          if (hasMohammedWithAneesa) return ch;
+        }
+        const r = findTargetYousef(ch);
+        if (r) return r;
+      }
+    }
+    return null;
+  }
+
+  function findParentNode(root, target) {
+    if (!root.children) return null;
+    for (const ch of root.children) {
+      if (ch === target) return root;
+      const r = findParentNode(ch, target);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function rotateSubtree(node, pivotX, pivotY, delta) {
+    const cos = Math.cos(delta), sin = Math.sin(delta);
+    function rot(n) {
+      const dx = n._x - pivotX, dy = n._y - pivotY;
+      n._x = pivotX + dx * cos - dy * sin;
+      n._y = pivotY + dx * sin + dy * cos;
+      if (n.children) n.children.forEach(rot);
+    }
+    rot(node);
+  }
+
+  const targetNode = findTargetYousef(yousefNode);
+  if (!targetNode) return;
+
+  const parentNode = findParentNode(yousefNode, targetNode);
+  if (!parentNode) return;
+
+  // Rotate 180° — exactly opposite of current direction
+  rotateSubtree(targetNode, parentNode._x, parentNode._y, Math.PI);
+})();
+
+// === POST-LAYOUT: Redirect حامد branch (child of محمد, child of يوسف) to point lower-right ===
+(function redirectHamedMainBranch() {
+  // حامد (depth 2 under يوسف) is uniquely identified by having "[غير معروف]" as a child
+  function findParentOfChildNamed(node, childName) {
+    if (node.children) {
+      for (const ch of node.children) {
+        if (ch.name && ch.name.includes(childName)) return node;
+        const r = findParentOfChildNamed(ch, childName);
+        if (r) return r;
+      }
+    }
+    return null;
+  }
+
+  function findParentNode(root, target) {
+    if (!root.children) return null;
+    for (const ch of root.children) {
+      if (ch === target) return root;
+      const r = findParentNode(ch, target);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function rotateSubtree(node, pivotX, pivotY, delta) {
+    const cos = Math.cos(delta), sin = Math.sin(delta);
+    function rot(n) {
+      const dx = n._x - pivotX, dy = n._y - pivotY;
+      n._x = pivotX + dx * cos - dy * sin;
+      n._y = pivotY + dx * sin + dy * cos;
+      if (n.children) n.children.forEach(rot);
+    }
+    rot(node);
+  }
+
+  const hamedNode = findParentOfChildNamed(yousefNode, '[غير معروف]');
+  if (!hamedNode) return;
+
+  const parentNode = findParentNode(yousefNode, hamedNode);
+  if (!parentNode) return;
+
+  const dx = hamedNode._x - parentNode._x;
+  const dy = hamedNode._y - parentNode._y;
+  const currentAngle = Math.atan2(dx, -dy);
+
+  // Target: lower-right direction ≈ 120° from north (right and slightly downward)
+  const targetAngle = Math.PI * 2 / 3;
+
+  rotateSubtree(hamedNode, parentNode._x, parentNode._y, targetAngle - currentAngle);
+
+  // Extend يوسف→محمد branch to 1.5x by translating entire محمد subtree outward
+  // Then rotate clockwise slightly around يوسف
+  (() => {
+    const outerMohammed = findParentNode(yousefNode, hamedNode);
+    if (!outerMohammed) return;
+    // 1. Extend to 1.5x
+    const dx = (outerMohammed._x - yousefNode._x) * 0.5;
+    const dy = (outerMohammed._y - yousefNode._y) * 0.5;
+    function translate(n) {
+      n._x += dx; n._y += dy;
+      if (n.children) n.children.forEach(translate);
+    }
+    translate(outerMohammed);
+    // 2. Rotate clockwise 10° around يوسف
+    const angle = 10 * Math.PI / 180;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const px = yousefNode._x, py = yousefNode._y;
+    function rotateAround(n) {
+      const ddx = n._x - px, ddy = n._y - py;
+      n._x = px + ddx * cos - ddy * sin;
+      n._y = py + ddx * sin + ddy * cos;
+      if (n.children) n.children.forEach(rotateAround);
+    }
+    rotateAround(outerMohammed);
+  })();
+
+  // Reposition عثمان (child of outer محمد) just above the آمنه leaf
+  (() => {
+    const outerMohammed = findParentNode(yousefNode, hamedNode);
+    if (!outerMohammed) return;
+
+    const othmanNode = outerMohammed.children && outerMohammed.children.find(
+      ch => ch.name && ch.name.includes('عثمان')
+    );
+    if (!othmanNode) return;
+
+    const innerMohammed = hamedNode.children && hamedNode.children.find(ch =>
+      ch.name && ch.name.includes('محمد') && ch.children &&
+      ch.children.some(c => c.name && c.name.includes('آمنه'))
+    );
+    if (!innerMohammed) return;
+
+    const amnahNode = innerMohammed.children.find(ch => ch.name && ch.name.includes('آمنه'));
+    if (!amnahNode) return;
+
+    // Place عثمان just above آمنه on screen
+    othmanNode._x = amnahNode._x;
+    othmanNode._y = amnahNode._y - 20;
+
+    // Place أحمد (عثمان's leaf child) further in the same direction
+    if (othmanNode.children && othmanNode.children.length > 0) {
+      const dx = othmanNode._x - outerMohammed._x;
+      const dy = othmanNode._y - outerMohammed._y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const extra = LEAF_SPREAD_RADIUS;
+      othmanNode.children.forEach(ch => {
+        ch._x = othmanNode._x + (dx / dist) * extra;
+        ch._y = othmanNode._y + (dy / dist) * extra;
+      });
+    }
+  })();
+
+  // Fix آمنه (leaf, direct child of inner محمد under حامد) — nudge slightly downward toward siblings
+  if (hamedNode.children) {
+    const innerMohammed = hamedNode.children.find(ch =>
+      ch.name && ch.name.includes('محمد') && ch.children &&
+      ch.children.some(c => c.name && c.name.includes('آمنه'))
+    );
+    if (innerMohammed && innerMohammed.children) {
+      const amnahNode = innerMohammed.children.find(ch => ch.name && ch.name.includes('آمنه'));
+      if (amnahNode) {
+        amnahNode._y += 310; // nudge downward (toward siblings)
+      }
+    }
+  }
+
+  // Fix مصباح (leaf child of حامد) — reposition her near the sibling cluster
+  if (hamedNode.children) {
+    const musbah = hamedNode.children.find(ch => ch.name && ch.name.includes('مصباح'));
+    if (musbah) {
+      const others = hamedNode.children.filter(ch => ch !== musbah);
+      if (others.length > 0) {
+        const avgX = others.reduce((s, ch) => s + ch._x, 0) / others.length;
+        const avgY = others.reduce((s, ch) => s + ch._y, 0) / others.length;
+        const dx = avgX - hamedNode._x;
+        const dy = avgY - hamedNode._y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const len = MIN_BRANCH_LENGTH + LEAF_SPREAD_RADIUS;
+        musbah._x = hamedNode._x + (dx / dist) * len;
+        musbah._y = hamedNode._y + (dy / dist) * len;
+      }
+    }
+  }
+})();
+
 // Place محمد below يوسف (roots)
 mohammedRoot._x = 0;
 mohammedRoot._y = TRUNK_LENGTH * 0.6;
