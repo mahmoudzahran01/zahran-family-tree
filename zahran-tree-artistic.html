@@ -281,9 +281,9 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
   if (!node.children || node.children.length === 0) return;
 
   const nextLen = Math.max(branchLen * BRANCH_LENGTH_DECAY, MIN_BRANCH_LENGTH);
-  // Weight by leaf count, but give childless nodes a small minimum (1)
-  // so they don't hog space. Nodes with many descendants get proportionally more.
-  const weights = node.children.map(ch => Math.max(ch._leafCount, 1));
+  // Weight by leaf count. Childless nodes get tiny weight (0.3) so they
+  // barely take space, freeing it for crowded branches.
+  const weights = node.children.map(ch => ch._leafCount > 0 ? ch._leafCount : 0.3);
   const totalWeight = weights.reduce((s, w) => s + w, 0);
   const numChildren = node.children.length;
   const gap = getSiblingGap(depth);
