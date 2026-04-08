@@ -281,28 +281,27 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
   if (!node.children || node.children.length === 0) return;
 
   const nextLen = Math.max(branchLen * BRANCH_LENGTH_DECAY, MIN_BRANCH_LENGTH);
-  // Weight by square root of descendant count — compresses small branches,
-  // gives more room to large ones. Leaf nodes get minimal weight.
+  // Weight by descendant count with a minimum floor per child.
+  // This ensures every child gets a reasonable share of the angle.
+  const minWeight = Math.max(1, totalLeafCount * 0.003); // ~1% of total per child minimum
   const weights = node.children.map(ch => {
-    if (ch._leafCount === 0) return 0.2;  // leaf node - minimal
-    return Math.sqrt(ch._leafCount);       // sqrt compression
+    if (ch._leafCount === 0) return minWeight;
+    return Math.max(ch._leafCount, minWeight);
   });
   const totalWeight = weights.reduce((s, w) => s + w, 0);
   const numChildren = node.children.length;
   const gap = getSiblingGap(depth);
 
-  // Total gap space needed between children
-  const totalGap = Math.max(0, (numChildren - 1)) * gap;
-
-  // Available span for actual branch allocation (after gaps)
   const parentSpan = angleEnd - angleStart;
-  const allocSpan = Math.max(parentSpan - totalGap, parentSpan * 0.5);
 
+  // Distribute the FULL parent span proportionally, then enforce minimum gap
   let currentAngle = angleStart;
   for (let i = 0; i < node.children.length; i++) {
     const child = node.children[i];
     const share = weights[i] / totalWeight;
-    const childSpan = share * allocSpan;
+    const childSpan = share * parentSpan;
+    // Enforce minimum gap from previous sibling
+    if (i > 0) currentAngle = Math.max(currentAngle, currentAngle + gap - childSpan * 0.01);
     const childAngleStart = currentAngle;
     const childAngleEnd = currentAngle + childSpan;
     const midAngle = (childAngleStart + childAngleEnd) / 2;
