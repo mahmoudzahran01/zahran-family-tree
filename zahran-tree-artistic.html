@@ -217,10 +217,11 @@ const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
 
 // Layout parameters
 const TRUNK_LENGTH = 250;
-const BASE_BRANCH_LENGTH = 380;
-const BRANCH_LENGTH_DECAY = 0.87;
-const MIN_BRANCH_LENGTH = 120;
-const MIN_TIP_SPACING = 220; // minimum pixels between leaf tips
+const BASE_BRANCH_LENGTH = 350;
+const BRANCH_LENGTH_DECAY = 0.85;
+const MIN_BRANCH_LENGTH = 100;
+const MIN_TIP_SPACING = 55; // minimum pixels between leaf tips at outer radius
+const LEAF_SPREAD_RADIUS = 45; // extra radius to fan out leaf siblings
 
 // We'll place يوسف at (0, 0) and the tree grows upward (negative Y).
 // محمد will be below يوسف (positive Y = below in screen, which is root area).
@@ -312,7 +313,16 @@ function layoutTree(node, cx, cy, angleStart, angleEnd, depth, branchLen) {
     const nx = cx + Math.sin(effectiveAngle) * effectiveLen;
     const ny = cy - Math.cos(effectiveAngle) * effectiveLen;
 
-    layoutTree(child, nx, ny, childAngleStart, childAngleEnd, depth + 1, nextLen);
+    // If this child is a leaf, push it out a bit further from parent
+    // to separate it from sibling leaves
+    if (!child.children || child.children.length === 0) {
+      const leafExtra = LEAF_SPREAD_RADIUS;
+      const lx = nx + Math.sin(effectiveAngle) * leafExtra;
+      const ly = ny - Math.cos(effectiveAngle) * leafExtra;
+      layoutTree(child, lx, ly, childAngleStart, childAngleEnd, depth + 1, nextLen);
+    } else {
+      layoutTree(child, nx, ny, childAngleStart, childAngleEnd, depth + 1, nextLen);
+    }
     currentAngle = childAngleEnd + gap;
   }
 }
@@ -596,11 +606,11 @@ function drawLeaf(x, y, scale, rotation) {
 function drawLeaves(node) {
   if (node._isLeaf) {
     // Draw 3-6 leaves at this position for a lush look
-    const numLeaves = 2 + Math.floor(rng() * 2);
+    const numLeaves = 1 + Math.floor(rng() * 2);
     for (let i = 0; i < numLeaves; i++) {
-      const ox = (rng() - 0.5) * 20;
-      const oy = (rng() - 0.5) * 20 - 8;
-      const s = 0.7 + rng() * 0.5;
+      const ox = (rng() - 0.5) * 14;
+      const oy = (rng() - 0.5) * 14 - 5;
+      const s = 0.6 + rng() * 0.4;
       const rot = rng() * 360;
       drawLeaf(node._x + ox, node._y + oy, s, rot);
     }
