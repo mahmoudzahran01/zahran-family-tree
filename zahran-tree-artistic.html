@@ -27,8 +27,7 @@ svg { display: block; }
 #title-overlay {
   position: fixed;
   top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 20px;
   z-index: 10;
   text-align: center;
   pointer-events: none;
@@ -216,7 +215,7 @@ const yousefNode = TREE_DATA.children[0]; // يوسف زهران
 const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
 
 // Layout parameters
-const TRUNK_LENGTH = 300;
+const TRUNK_LENGTH = 1820;
 const BASE_BRANCH_LENGTH = 500;
 const BRANCH_LENGTH_DECAY = 0.88;
 const MIN_BRANCH_LENGTH = 150;
@@ -653,8 +652,8 @@ layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
   const dy = hamedNode._y - parentNode._y;
   const currentAngle = Math.atan2(dx, -dy);
 
-  // Target: lower-right direction ≈ 120° from north (right and slightly downward)
-  const targetAngle = Math.PI * 2 / 3;
+  // Target: ≈ 150° from north (south-southeast, counterclockwise from 195°)
+  const targetAngle = Math.PI * 5 / 6;
 
   rotateSubtree(hamedNode, parentNode._x, parentNode._y, targetAngle - currentAngle);
 
@@ -703,9 +702,16 @@ layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
     const amnahNode = innerMohammed.children.find(ch => ch.name && ch.name.includes('آمنه'));
     if (!amnahNode) return;
 
-    // Place عثمان just above آمنه on screen
+    // Place عثمان below آمنه on screen
     othmanNode._x = amnahNode._x;
-    othmanNode._y = amnahNode._y - 20;
+    othmanNode._y = amnahNode._y + 80;
+
+    // Shorten عثمان branch to 65% of its distance from parent
+    {
+      const scale = 0.65;
+      othmanNode._x = outerMohammed._x + (othmanNode._x - outerMohammed._x) * scale;
+      othmanNode._y = outerMohammed._y + (othmanNode._y - outerMohammed._y) * scale;
+    }
 
     // Place أحمد (عثمان's leaf child) further in the same direction
     if (othmanNode.children && othmanNode.children.length > 0) {
@@ -717,6 +723,14 @@ layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
         ch._x = othmanNode._x + (dx / dist) * extra;
         ch._y = othmanNode._y + (dy / dist) * extra;
       });
+    }
+
+    // Nudge زينب downward so she doesn't overlap
+    const zainabNode = outerMohammed.children && outerMohammed.children.find(
+      ch => ch.name && ch.name.includes('زينب')
+    );
+    if (zainabNode) {
+      zainabNode._y += 100;
     }
   })();
 
@@ -749,6 +763,63 @@ layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
         musbah._x = hamedNode._x + (dx / dist) * len;
         musbah._y = hamedNode._y + (dy / dist) * len;
       }
+    }
+  }
+})();
+
+// === POST-LAYOUT: Rotate both main branches upward to look like a natural tree ===
+(function rotateBranchesUpward() {
+  function rotateSubtree(node, pivotX, pivotY, d) {
+    const cos = Math.cos(d), sin = Math.sin(d);
+    function rot(n) {
+      const dx = n._x - pivotX, dy = n._y - pivotY;
+      n._x = pivotX + dx * cos - dy * sin;
+      n._y = pivotY + dx * sin + dy * cos;
+      if (n.children) n.children.forEach(rot);
+    }
+    rot(node);
+  }
+
+  // محمد (left branch, child of يوسف): rotate CW 45° → tilts toward upper-left
+  const mohammedChild = yousefNode.children && yousefNode.children.find(
+    ch => ch.name && ch.name.includes('محمد')
+  );
+  if (mohammedChild) {
+    rotateSubtree(mohammedChild, yousefNode._x, yousefNode._y, 45 * Math.PI / 180);
+  }
+
+  // عبدالله (right branch, child of يوسف): rotate CCW 60° → tilts toward upper-right
+  const abdullahChild = yousefNode.children && yousefNode.children.find(
+    ch => ch.name && ch.name.includes('عبدالله')
+  );
+  if (abdullahChild) {
+    rotateSubtree(abdullahChild, yousefNode._x, yousefNode._y, 45 * Math.PI / 180);
+
+    // Rotate محمود (child of عبدالله) CCW by 10°
+    const mahmoudChild = abdullahChild.children && abdullahChild.children.find(
+      ch => ch.name && ch.name.includes('محمود')
+    );
+    if (mahmoudChild) {
+      rotateSubtree(mahmoudChild, abdullahChild._x, abdullahChild._y, -50 * Math.PI / 180);
+
+      // Shorten سعاد and نور branches to half length
+      ['سعاد', 'نور'].forEach(name => {
+        const n = mahmoudChild.children && mahmoudChild.children.find(
+          ch => ch.name && ch.name.includes(name)
+        );
+        if (n) {
+          n._x = mahmoudChild._x + (n._x - mahmoudChild._x) * 0.5;
+          n._y = mahmoudChild._y + (n._y - mahmoudChild._y) * 0.5;
+        }
+      });
+    }
+
+    // Rotate يوسف (child of عبدالله) CCW by 10°
+    const yousefInnerChild = abdullahChild.children && abdullahChild.children.find(
+      ch => ch.name && ch.name.includes('يوسف')
+    );
+    if (yousefInnerChild) {
+      rotateSubtree(yousefInnerChild, abdullahChild._x, abdullahChild._y, -10 * Math.PI / 180);
     }
   }
 })();
@@ -856,9 +927,8 @@ mainG.appendChild(groundG);
 // Ground with gradient
 const groundGradId = 'groundGrad';
 const gg = createEl('radialGradient', { id: groundGradId, cx: '50%', cy: '30%' });
-gg.appendChild(createEl('stop', { offset: '0%', 'stop-color': '#8D6E63', 'stop-opacity': '0.35' }));
-gg.appendChild(createEl('stop', { offset: '70%', 'stop-color': '#A1887F', 'stop-opacity': '0.15' }));
-gg.appendChild(createEl('stop', { offset: '100%', 'stop-color': '#BCAAA4', 'stop-opacity': '0.05' }));
+gg.appendChild(createEl('stop', { offset: '0%', 'stop-color': '#1B5E20', 'stop-opacity': '1' }));
+gg.appendChild(createEl('stop', { offset: '100%', 'stop-color': '#1B5E20', 'stop-opacity': '1' }));
 defs.appendChild(gg);
 
 const groundRect = createEl('ellipse', {
@@ -867,6 +937,28 @@ const groundRect = createEl('ellipse', {
   fill: `url(#${groundGradId})`
 });
 groundG.appendChild(groundRect);
+
+// Subtle highlight rim for depth
+const groundHighlight = createEl('ellipse', {
+  cx: 0, cy: TRUNK_LENGTH * 0.65 + 18,
+  rx: 200, ry: 14,
+  fill: 'none',
+  stroke: '#66BB6A',
+  'stroke-width': '1',
+  opacity: '0.4'
+});
+groundG.appendChild(groundHighlight);
+
+// Sharp modern border
+const groundBorder = createEl('ellipse', {
+  cx: 0, cy: TRUNK_LENGTH * 0.65 + 25,
+  rx: 250, ry: 35,
+  fill: 'none',
+  stroke: '#33691E',
+  'stroke-width': '3',
+  opacity: '1'
+});
+groundG.appendChild(groundBorder);
 
 // Small grass tufts
 for (let i = 0; i < 12; i++) {
@@ -1062,38 +1154,31 @@ for (const { node } of allNodes) {
 const labelG = createEl('g');
 mainG.appendChild(labelG);
 
-// Root label (محمد) - at the base of the trunk
+// Root label — text over the ground ellipse
 function addRootLabel() {
-  // Decorative plate behind the name
   const plateY = TRUNK_LENGTH * 0.65 + 22;
-  const plate = createEl('rect', {
-    x: -55, y: plateY - 14,
-    width: 110, height: 32,
-    rx: 8, ry: 8,
-    fill: '#3E2723',
-    opacity: '0.7'
-  });
-  labelG.appendChild(plate);
 
   const rootText = createEl('text', {
     x: 0, y: plateY,
     'text-anchor': 'middle',
     'dominant-baseline': 'middle',
-    fill: '#FFF8E1',
-    'font-size': '14',
+    fill: '#1B0F00',
+    'font-size': '18',
     'font-weight': '700',
+    'letter-spacing': '2',
     'font-family': 'Amiri, serif'
   });
-  rootText.textContent = stripFamily(mohammedRoot.name) + ' زهران';
+  rootText.textContent = stripFamily(yousefNode.name);
   labelG.appendChild(rootText);
 
   const rootsLabel = createEl('text', {
-    x: 0, y: plateY + 14,
+    x: 0, y: plateY + 17,
     'text-anchor': 'middle',
-    fill: '#BCAAA4',
-    'font-size': '9',
+    'dominant-baseline': 'middle',
+    fill: '#81C784',
+    'font-size': '10',
     'font-family': 'Amiri, serif',
-    opacity: '0.8'
+    'letter-spacing': '1'
   });
   rootsLabel.textContent = 'الجد الأكبر';
   labelG.appendChild(rootsLabel);
@@ -1107,7 +1192,6 @@ function fontSize(depth) {
 }
 
 function textColor(depth, isLeaf) {
-  if (depth <= 1) return '#FFFFFF';
   return '#1B0F00';
 }
 
@@ -1122,54 +1206,7 @@ function drawNames(node) {
   const fs = fontSize(node._depth);
   const color = textColor(node._depth, node._isLeaf);
 
-  if (node._depth === 0 && node === yousefNode) {
-    // يوسف on the trunk
-    const txt = createEl('text', {
-      x: 0, y: -5,
-      'text-anchor': 'middle',
-      'dominant-baseline': 'middle',
-      fill: '#FFF8E1',
-      'font-size': '20',
-      'font-weight': '700',
-      'font-family': 'Amiri, serif',
-      stroke: '#3E2723',
-      'stroke-width': '0.5',
-      'paint-order': 'stroke'
-    });
-    txt.textContent = name;
-    labelG.appendChild(txt);
-  } else if (node._depth <= 2 && !node._isLeaf) {
-    // Major branch names - rotated along branch direction
-    const parent = node._parent;
-    if (parent) {
-      const dx = node._x - parent._x;
-      const dy = node._y - parent._y;
-      let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-      // Keep text readable
-      if (angle > 90) angle -= 180;
-      if (angle < -90) angle += 180;
-
-      const midX = (node._x + parent._x) / 2;
-      const midY = (node._y + parent._y) / 2;
-
-      const txt = createEl('text', {
-        x: 0, y: 0,
-        'text-anchor': 'middle',
-        'dominant-baseline': 'middle',
-        fill: color,
-        'font-size': String(fs),
-        'font-weight': '700',
-        'font-family': 'Amiri, serif',
-        transform: `translate(${midX},${midY}) rotate(${angle})`,
-        stroke: textStroke(node._depth),
-        'stroke-width': node._depth <= 1 ? '0.5' : '3',
-        'paint-order': 'stroke'
-      });
-      txt.textContent = name;
-      labelG.appendChild(txt);
-    }
-  } else {
+  {
     // All other names at their position
     const txt = createEl('text', {
       x: node._x,
@@ -1185,11 +1222,6 @@ function drawNames(node) {
     });
 
     // Add white background stroke for readability on ALL non-trunk nodes
-    if (node._depth >= 2) {
-      txt.setAttribute('stroke', '#FFFFFF');
-      txt.setAttribute('stroke-width', '3.5');
-      txt.setAttribute('paint-order', 'stroke');
-    }
 
     txt.textContent = name;
     txt.dataset.nodeId = node._id;
@@ -1219,45 +1251,6 @@ function drawNames(node) {
     }
   }
 
-  // Draw name for depth 1-2 at their position too (in addition to along branch)
-  if (node._depth >= 1 && node._depth <= 2 && !node._isLeaf) {
-    const txt2 = createEl('text', {
-      x: node._x,
-      y: node._y + (fs + 2),
-      'text-anchor': 'middle',
-      'dominant-baseline': 'middle',
-      fill: color,
-      'font-size': String(fs * 0.7),
-      'font-weight': '400',
-      'font-family': 'Amiri, serif',
-      opacity: '0.7',
-      stroke: '#3E2723',
-      'stroke-width': '0.2',
-      'paint-order': 'stroke'
-    });
-    txt2.textContent = name;
-    labelG.appendChild(txt2);
-
-    // Spouse for major branches
-    if (node.spouse) {
-      const spFs2 = Math.max(7, fs * 0.45);
-      const sp2 = createEl('text', {
-        x: node._x,
-        y: node._y + (fs + 2) + spFs2 + 3,
-        'text-anchor': 'middle',
-        'dominant-baseline': 'middle',
-        fill: '#5D4037',
-        'font-size': String(spFs2),
-        'font-family': 'Amiri, serif',
-        opacity: '0.8',
-        stroke: '#FFFFFF',
-        'stroke-width': '2',
-        'paint-order': 'stroke'
-      });
-      sp2.textContent = '⚭ ' + node.spouse;
-      labelG.appendChild(sp2);
-    }
-  }
 
   if (node.children) {
     for (const ch of node.children) drawNames(ch);
