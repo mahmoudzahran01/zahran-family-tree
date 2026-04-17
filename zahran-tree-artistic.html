@@ -1622,7 +1622,12 @@ searchInput.addEventListener('input', () => {
     const item = document.createElement('div');
     item.className = 'sr-item';
     const parentName = path.length > 0 ? path[path.length - 1].replace(/ زهران$/, '') : '';
-    item.innerHTML = `${node.name}${parentName ? `<small>ابن/ة ${parentName}</small>` : ''}`;
+    const nameMatch = node.name.includes(q);
+    const spouseMatch = !nameMatch && node.spouse && node.spouse.includes(q);
+    const subtitle = spouseMatch
+      ? `<small>زوج/ة: ${node.spouse}</small>`
+      : (parentName ? `<small>ابن/ة ${parentName}</small>` : '');
+    item.innerHTML = `${node.name}${subtitle}`;
     item.addEventListener('click', () => {
       searchResults.style.display = 'none';
       searchInput.value = node.name;
