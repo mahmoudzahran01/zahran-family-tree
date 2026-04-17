@@ -12,7 +12,7 @@
 html, body {
   width: 100%; height: 100%;
   overflow: hidden;
-  background: #FDF8F0;
+  background: linear-gradient(to bottom, #E8F5E9 0%, #F9FBE7 60%, #FDF8F0 100%);
   font-family: 'Amiri', 'Traditional Arabic', 'Noto Naskh Arabic', serif;
 }
 #canvas-container {
@@ -215,7 +215,7 @@ const yousefNode = TREE_DATA.children[0]; // يوسف زهران
 const mohammedRoot = TREE_DATA; // محمد زهران (above roots)
 
 // Layout parameters
-const TRUNK_LENGTH = 1820;
+const TRUNK_LENGTH = 2600;
 const BASE_BRANCH_LENGTH = 500;
 const BRANCH_LENGTH_DECAY = 0.88;
 const MIN_BRANCH_LENGTH = 150;
@@ -820,6 +820,19 @@ layoutTree(yousefNode, 0, 0, startAngle, endAngle, 0, BASE_BRANCH_LENGTH);
     );
     if (yousefInnerChild) {
       rotateSubtree(yousefInnerChild, abdullahChild._x, abdullahChild._y, -10 * Math.PI / 180);
+
+      // Elongate the عبدالله→يوسف branch by translating يوسف and its subtree outward (1.8x)
+      const scale = 1.8;
+      const edx = yousefInnerChild._x - abdullahChild._x;
+      const edy = yousefInnerChild._y - abdullahChild._y;
+      const extraX = edx * (scale - 1);
+      const extraY = edy * (scale - 1);
+      function translateSubtree(n) {
+        n._x += extraX;
+        n._y += extraY;
+        if (n.children) n.children.forEach(translateSubtree);
+      }
+      translateSubtree(yousefInnerChild);
     }
   }
 })();
@@ -908,7 +921,20 @@ createLeafDef('leaf3', '#81C784', '#1B5E20');
 createLeafDef('leaf4', '#B9F6CA', '#43A047');
 createLeafDef('leaf5', '#69F0AE', '#00695C');
 
-const leafGradients = ['leaf1', 'leaf2', 'leaf3', 'leaf4', 'leaf5'];
+// Female (purple) leaf gradients
+createLeafDef('fleaf1', '#FCE4EC', '#F48FB1');
+createLeafDef('fleaf2', '#F8BBD9', '#F06292');
+createLeafDef('fleaf3', '#FFD6E0', '#E91E8C'.replace('#E91E8C','#EC407A'));
+createLeafDef('fleaf4', '#FFF0F5', '#F48FB1');
+createLeafDef('fleaf5', '#FFCDD2', '#EF9A9A');
+
+const leafGradients     = ['leaf1',  'leaf2',  'leaf3',  'leaf4',  'leaf5'];
+const femaleLeafGradients = ['fleaf1', 'fleaf2', 'fleaf3', 'fleaf4', 'fleaf5'];
+
+// Foliage puff blur filter
+const foliagePuffFilter = createEl('filter', { id: 'foliagePuff', x: '-60%', y: '-60%', width: '220%', height: '220%' });
+foliagePuffFilter.appendChild(createEl('feGaussianBlur', { in: 'SourceGraphic', stdDeviation: '18' }));
+defs.appendChild(foliagePuffFilter);
 
 // Main transform group
 const mainG = createEl('g');
@@ -1039,8 +1065,8 @@ const trunkY0 = TRUNK_LENGTH * 0.65;
 const trunkTopY = -5;
 // Left and right edges of trunk (wider at base, narrower at top)
 const trunkShape = createEl('path', {
-  d: `M -16 ${trunkY0} C -14 ${trunkY0 * 0.5}, -10 ${trunkY0 * 0.2}, -6 ${trunkTopY}
-      L 6 ${trunkTopY} C 10 ${trunkY0 * 0.2}, 14 ${trunkY0 * 0.5}, 16 ${trunkY0} Z`,
+  d: `M -40 ${trunkY0} C -34 ${trunkY0 * 0.5}, -24 ${trunkY0 * 0.2}, -13 ${trunkTopY}
+      L 13 ${trunkTopY} C 24 ${trunkY0 * 0.2}, 34 ${trunkY0 * 0.5}, 40 ${trunkY0} Z`,
   fill: '#4E342E',
   filter: 'url(#trunkGlow)',
   opacity: '0.95',
@@ -1090,12 +1116,46 @@ function drawBranches(node) {
 }
 drawBranches(yousefNode);
 
+// ===== DRAW FOLIAGE PUFFS (blurred green blobs behind leaves) =====
+const foliageG = createEl('g', { filter: 'url(#foliagePuff)', opacity: '0.55' });
+mainG.appendChild(foliageG);
+
+const foliageColors       = ['#1B5E20', '#2E7D32', '#388E3C', '#33691E', '#43A047', '#558B2F'];
+const foliageColorsFemale = ['#F48FB1', '#F06292', '#EC407A', '#F8BBD9', '#E91E63', '#FF80AB'];
+function drawFoliagePuffs(node) {
+  const isFemale = node.gender === 'f';
+  const colors = isFemale ? foliageColorsFemale : foliageColors;
+  if (node._isLeaf) {
+    const numPuffs = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < numPuffs; i++) {
+      const ox = (rng() - 0.5) * 30;
+      const oy = (rng() - 0.5) * 30;
+      foliageG.appendChild(createEl('circle', {
+        cx: String(node._x + ox), cy: String(node._y + oy),
+        r: String(16 + rng() * 18),
+        fill: colors[Math.floor(rng() * colors.length)],
+        opacity: String(0.6 + rng() * 0.4)
+      }));
+    }
+  } else if (node._depth >= 4) {
+    foliageG.appendChild(createEl('circle', {
+      cx: String(node._x), cy: String(node._y),
+      r: String(10 + rng() * 10),
+      fill: colors[Math.floor(rng() * colors.length)],
+      opacity: String(0.3 + rng() * 0.3)
+    }));
+  }
+  if (node.children) node.children.forEach(drawFoliagePuffs);
+}
+drawFoliagePuffs(yousefNode);
+
 // ===== DRAW LEAVES =====
 const leafG = createEl('g');
 mainG.appendChild(leafG);
 
-function drawLeaf(x, y, scale, rotation) {
-  const gradId = leafGradients[Math.floor(rng() * leafGradients.length)];
+function drawLeaf(x, y, scale, rotation, isFemale) {
+  const pool = isFemale ? femaleLeafGradients : leafGradients;
+  const gradId = pool[Math.floor(rng() * pool.length)];
   // More realistic leaf shape with pointed tip and wider body
   const leafPaths = [
     'M 0,-9 C 3.5,-7 5.5,-2 4,2 C 3,5 1.5,8 0,10 C -1.5,8 -3,5 -4,2 C -5.5,-2 -3.5,-7 0,-9 Z',
@@ -1108,7 +1168,7 @@ function drawLeaf(x, y, scale, rotation) {
     fill: `url(#${gradId})`,
     transform: `translate(${x},${y}) rotate(${rotation}) scale(${scale})`,
     opacity: String(0.65 + rng() * 0.35),
-    stroke: '#2E7D32',
+    stroke: isFemale ? '#E91E63' : '#2E7D32',
     'stroke-width': '0.3'
   });
   leafG.appendChild(leaf);
@@ -1116,23 +1176,22 @@ function drawLeaf(x, y, scale, rotation) {
 
 // Draw leaves at leaf nodes and scattered near tips
 function drawLeaves(node) {
+  const isFemale = node.gender === 'f';
   if (node._isLeaf) {
-    // Draw 3-6 leaves at this position for a lush look
-    const numLeaves = 1 + Math.floor(rng() * 2);
+    const numLeaves = 5 + Math.floor(rng() * 5);
     for (let i = 0; i < numLeaves; i++) {
-      const ox = (rng() - 0.5) * 14;
-      const oy = (rng() - 0.5) * 14 - 5;
-      const s = 0.6 + rng() * 0.4;
+      const ox = (rng() - 0.5) * 24;
+      const oy = (rng() - 0.5) * 24 - 6;
+      const s = 1.0 + rng() * 1.0;
       const rot = rng() * 360;
-      drawLeaf(node._x + ox, node._y + oy, s, rot);
+      drawLeaf(node._x + ox, node._y + oy, s, rot, isFemale);
     }
-  } else if (node._depth >= 4) {
-    // Add a couple leaves to branch nodes too for density
-    const numLeaves = Math.floor(rng() * 2);
+  } else if (node._depth >= 3) {
+    const numLeaves = 1 + Math.floor(rng() * 3);
     for (let i = 0; i < numLeaves; i++) {
-      const ox = (rng() - 0.5) * 15;
-      const oy = (rng() - 0.5) * 15;
-      drawLeaf(node._x + ox, node._y + oy, 0.4 + rng() * 0.4, rng() * 360);
+      const ox = (rng() - 0.5) * 20;
+      const oy = (rng() - 0.5) * 20;
+      drawLeaf(node._x + ox, node._y + oy, 0.7 + rng() * 0.6, rng() * 360, isFemale);
     }
   }
   if (node.children) {
@@ -1143,10 +1202,14 @@ drawLeaves(yousefNode);
 
 // Extra scattered leaves in the canopy for fullness
 for (const { node } of allNodes) {
-  if (node._depth >= 3 && rng() > 0.4) {
-    const ox = (rng() - 0.5) * 22;
-    const oy = (rng() - 0.5) * 22;
-    drawLeaf(node._x + ox, node._y + oy, 0.4 + rng() * 0.5, rng() * 360);
+  if (node._depth >= 3 && rng() > 0.2) {
+    const isFemale = node.gender === 'f';
+    const count = 1 + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i++) {
+      const ox = (rng() - 0.5) * 30;
+      const oy = (rng() - 0.5) * 30;
+      drawLeaf(node._x + ox, node._y + oy, 0.6 + rng() * 0.8, rng() * 360, isFemale);
+    }
   }
 }
 
@@ -1268,8 +1331,8 @@ function drawDots(node) {
     const dot = createEl('circle', {
       cx: node._x, cy: node._y,
       r: r,
-      fill: node._isLeaf ? '#4CAF50' : branchColor(node._depth),
-      stroke: node._isLeaf ? '#2E7D32' : '#3E2723',
+      fill: node._isLeaf ? (node.gender === 'f' ? '#F48FB1' : '#4CAF50') : branchColor(node._depth),
+      stroke: node._isLeaf ? (node.gender === 'f' ? '#E91E63' : '#2E7D32') : '#3E2723',
       'stroke-width': '0.5',
       opacity: '0.8',
       'pointer-events': 'all',
